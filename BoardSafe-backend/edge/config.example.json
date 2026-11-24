@@ -1,0 +1,9 @@
+{
+  "api_base": "http://127.0.0.1:8000/api/v1",
+  "node_id": "REPLACE_WITH_ADMIN_REGISTERED_CAMERA_NODE_ID",
+  "camera_source": "0",
+  "onnx_model_path": "/opt/boardsafe-edge/models/yolov8n-coco.onnx",
+  "bay_roi_normalized": [[0.15,0.40],[0.80,0.40],[0.90,0.92],[0.10,0.92]],
+  "analysis_interval_seconds": 1,
+  "confidence_threshold": 0.55
+}

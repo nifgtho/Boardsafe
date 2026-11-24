@@ -1,0 +1,316 @@
+{
+  "name": "BoardSafe",
+  "version": "1.0.0",
+  "date": "2026-11-20",
+  "tests_passed": 27,
+  "backend_coverage_percent": 81,
+  "databases": [
+    "PostgreSQL 16/PostGIS deploy",
+    "SQLite local/test"
+  ],
+  "external_services": [
+    "OSRM self-host",
+    "OpenStreetMap/Geofabrik PBF",
+    "Open-Meteo optional",
+    "authorized Edge ONNX model"
+  ],
+  "entrypoints": [
+    "app.main:app",
+    "app.workers",
+    "app.cli",
+    "edge.agent"
+  ],
+  "integrations_operational_status": "implemented adapters; live third-party and physical validation required",
+  "files": [
+    {
+      "path": ".env.example",
+      "sha256": "eed92986047d41a5a7ff4ef40baf392124ba110351d4112d32a6a141741a01b8",
+      "bytes": 689
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "4f64e800ef918b73230e45e62c6280a328b3e82c990a21860fa8011e3ec5477b",
+      "bytes": 723
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "c41dcfe5ebb1673bc8b682742621b473161b61f859731bb06da7f5c5531a0e8d",
+      "bytes": 122
+    },
+    {
+      "path": "Dockerfile",
+      "sha256": "b1c01fcdcab8a84deac6f71bff361be2a0438dea59a5d827759097bd3300023c",
+      "bytes": 442
+    },
+    {
+      "path": "README.md",
+      "sha256": "4ac41a08aaab55dfb8ec650bbe9db1f29a9fb555b7521580aaccf2ef994395a4",
+      "bytes": 10956
+    },
+    {
+      "path": "RELEASE.md",
+      "sha256": "30c9c8fd4ff4216ccc99558a291fee8ec17c5d1ebd08f6f1e1832a219dfc23d9",
+      "bytes": 1593
+    },
+    {
+      "path": "alembic.ini",
+      "sha256": "e21da0e586a0798e77db56a4b0dd1461ad7141da4c6536a52e7f8e2d80e5674d",
+      "bytes": 570
+    },
+    {
+      "path": "app/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "app/api/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "app/api/assistance.py",
+      "sha256": "5a054deca24a90ccdc1ab2dbeba146a7ca309abd27327caa78024838823fad1e",
+      "bytes": 9310
+    },
+    {
+      "path": "app/api/auth.py",
+      "sha256": "b89639ba7ee2f9aa380d1220b36a51049849e148c0d24fa9852de060f6793880",
+      "bytes": 2613
+    },
+    {
+      "path": "app/api/kiosk.py",
+      "sha256": "476f0f47ad44cf82315f342f469adb30108062f9c3a0552403075b1322c13fad",
+      "bytes": 3191
+    },
+    {
+      "path": "app/api/map_events.py",
+      "sha256": "8e8cfe5a427b00e96a8bf89928cac300728f303f04dfc6155bfb56d79d1ef976",
+      "bytes": 7602
+    },
+    {
+      "path": "app/api/operations.py",
+      "sha256": "6bf99b0e2081c3e7b80222c01f9b044c61cf9b789bd33ee2f4445fe0fdb4f49e",
+      "bytes": 3510
+    },
+    {
+      "path": "app/api/reports.py",
+      "sha256": "8a0f38a59b8612a7808cde6ffd2d179cc8d24c2f7b870b19762e60767e08ad8c",
+      "bytes": 2238
+    },
+    {
+      "path": "app/api/resilience.py",
+      "sha256": "0664ac553f85a36838667b37f6bf91f4971d2fa7ae21ca8108ef88d0fd2458c1",
+      "bytes": 7711
+    },
+    {
+      "path": "app/api/roads.py",
+      "sha256": "d9bd37c79d7f59c3e67c6aad3d7f61025416ec4cbe0b63c336520ff71233a5de",
+      "bytes": 5496
+    },
+    {
+      "path": "app/api/sensing.py",
+      "sha256": "f7409a81fe689f8cf98643844b493c80b989ac6b882dfc96f3ce84ecffd0b94e",
+      "bytes": 4716
+    },
+    {
+      "path": "app/cli.py",
+      "sha256": "73ca6799c9921041bb4db8d12d4fc5f8ab20aa5836f2af43abd3064d3819c2e4",
+      "bytes": 3915
+    },
+    {
+      "path": "app/config.py",
+      "sha256": "70f4eb0cd04aed8c94c686b57bad047c4f985311aec3d4064330cb8adba11b7e",
+      "bytes": 1823
+    },
+    {
+      "path": "app/db.py",
+      "sha256": "959a8f204743ddfa590c2a41bb998141a73b18acb8663fed01a08aa5fd2f727e",
+      "bytes": 1065
+    },
+    {
+      "path": "app/domain/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "app/domain/geo.py",
+      "sha256": "26ba989a54c5bb427e23f8218c42c9e8dd9d602d7a21c96e5f49d3d5eb442402",
+      "bytes": 1738
+    },
+    {
+      "path": "app/domain/rules.py",
+      "sha256": "6ea806210a51418753091714f1dd6ceefa15b8836ef2042de1412256bb52ed8b",
+      "bytes": 3943
+    },
+    {
+      "path": "app/integrations/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "app/integrations/open_meteo.py",
+      "sha256": "b08b933a5559a2f52b9fa0f326b49c42669d675be18be500bfaf10fa7cbf24f9",
+      "bytes": 1672
+    },
+    {
+      "path": "app/integrations/osrm.py",
+      "sha256": "01a33b92eb9daf6e1cddf742853d6d0118d25a2c6f3a8df291ea8c65931e6dc7",
+      "bytes": 2396
+    },
+    {
+      "path": "app/main.py",
+      "sha256": "82fcd3b4efd666077be42f14db25f79ea4a7ab572e51f84124b56bf2e52afc67",
+      "bytes": 2226
+    },
+    {
+      "path": "app/models.py",
+      "sha256": "7919d7fcac4eef4a1230e3a9ac550f074271ef9a066225bef18a6a85c6c94e81",
+      "bytes": 13472
+    },
+    {
+      "path": "app/schemas.py",
+      "sha256": "732a2d7c9732ce33dd7ce770604a351fa3ce2046e3581af33f6b6853cfb2f51e",
+      "bytes": 6137
+    },
+    {
+      "path": "app/security.py",
+      "sha256": "9f204f261fcda0637a13d7a56930ca2ae85a41b17f13a63d2c6177b5d6cdb6a2",
+      "bytes": 2574
+    },
+    {
+      "path": "app/services.py",
+      "sha256": "f826615ea88f8a7c8708c71514411ec550560b597c9728229674734d52769e0a",
+      "bytes": 2681
+    },
+    {
+      "path": "app/workers.py",
+      "sha256": "62d43adea518a7fa7b64d3fb9addf719acd95ee4b05ccd89e845246fdb2db270",
+      "bytes": 4598
+    },
+    {
+      "path": "compose.yaml",
+      "sha256": "5b7a391adf68e08c37e80f51c344abbe67bb4c6e71a192e000d71ef191b5b5ab",
+      "bytes": 1649
+    },
+    {
+      "path": "docs/ARQUITECTURA.md",
+      "sha256": "157c730aa249ac01a6cf26f10152f14508f5f71992fd3fed37302bbd196a2be9",
+      "bytes": 6235
+    },
+    {
+      "path": "docs/FRONTEND_INTEGRATION.md",
+      "sha256": "989e1480852bed2d564c3792499f9f3b033dc2ae92d1cd5e53c3bba346a40099",
+      "bytes": 9438
+    },
+    {
+      "path": "docs/VALIDACION.md",
+      "sha256": "c8cec941fc13be0003662728ac513d0c74944cf189d4f077da7bc3fc3ee03cc4",
+      "bytes": 2834
+    },
+    {
+      "path": "docs/openapi.json",
+      "sha256": "8a500925a753dc74f6859d528bb42ea133b518dbcd970b280ab73031fd4948fe",
+      "bytes": 75354
+    },
+    {
+      "path": "edge/README.md",
+      "sha256": "2ce4c57e3afd3079bf2cd18e949fde9e4b57f4213ee6f4d1b0ca3016e144ecf2",
+      "bytes": 2213
+    },
+    {
+      "path": "edge/__init__.py",
+      "sha256": "97b0918fd2dd6eff0e2079e341e271d778a09435aca0b7c74d9597e00379ba9e",
+      "bytes": 71
+    },
+    {
+      "path": "edge/agent.py",
+      "sha256": "4a39457a37c913b142a465f693bda61a2d267719a127ec377682b6a3ad0a48b4",
+      "bytes": 5584
+    },
+    {
+      "path": "edge/config.example.json",
+      "sha256": "f558348df1732c930e165298ae15f9a87862b91884e36c937ae634b5d820f864",
+      "bytes": 344
+    },
+    {
+      "path": "edge/requirements.txt",
+      "sha256": "0b961948544f15128066dedbd24615145828e0f86e010c3acb38d1a2b6f71536",
+      "bytes": 62
+    },
+    {
+      "path": "examples/edge_event.json",
+      "sha256": "4682a76092e9f36cb8fea3a013771049c4f1bdfe41c5cab651ffc5afc31331cf",
+      "bytes": 101
+    },
+    {
+      "path": "examples/risk_zones.example.geojson",
+      "sha256": "6defdccbcf67906fe2bcb259c7ff6ed1e77f200103c67b1e6a923f067072fa7d",
+      "bytes": 341
+    },
+    {
+      "path": "migrations/env.py",
+      "sha256": "14aa1bf4b3c1a3079b45bc4c6a6bd8404fc5c21959dbb27178be085c82bc10ea",
+      "bytes": 1162
+    },
+    {
+      "path": "migrations/versions/0001_initial_schema.py",
+      "sha256": "6ddad261eaa5b2fda659949816958a61a7315e5c71c5b2cdeb00cffc4329ae64",
+      "bytes": 15441
+    },
+    {
+      "path": "migrations/versions/0002_postgis_indexes.py",
+      "sha256": "7ae616636e8f65ea07adc46bb3e8744abfac9aeb30e669ea22a90c1dfdbd1da3",
+      "bytes": 1373
+    },
+    {
+      "path": "pyproject.toml",
+      "sha256": "098c54dfb79524e127aa5ca01a52c8fa9fba48c31b3c0707ef54003ffc9a38c4",
+      "bytes": 830
+    },
+    {
+      "path": "scripts/export_openapi.py",
+      "sha256": "60135d64b6bdb347f60a76c7ddd896ec0b39f1145ca5092de57858a73f1c86eb",
+      "bytes": 338
+    },
+    {
+      "path": "scripts/prepare_osrm.sh",
+      "sha256": "02ce2536a3a0121d83a64c8ebf1fd737070c85c72fa3d39e86ac018acacd9c58",
+      "bytes": 1141
+    },
+    {
+      "path": "scripts/run_local.sh",
+      "sha256": "945f367cd4c4d72c049e04316efce068ab91fe093e7cc7e673480b91e490d88b",
+      "bytes": 228
+    },
+    {
+      "path": "tests/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "tests/conftest.py",
+      "sha256": "cca3a69fb7fe1d8b259fc7c9c7836b80289ab48b25411bab4a0a1869d6d46327",
+      "bytes": 2578
+    },
+    {
+      "path": "tests/test_domain.py",
+      "sha256": "5c8268649e22bd40dda65b550f9f4ca8c8906af49549f2053572bf4975dd0082",
+      "bytes": 1311
+    },
+    {
+      "path": "tests/test_edge_policy.py",
+      "sha256": "3b7414762b7578c56ee773e7558f22f9c50c8cc58115c87d207f634cf699e7e0",
+      "bytes": 363
+    },
+    {
+      "path": "tests/test_osrm_adapter.py",
+      "sha256": "98c406cbeeb661e29bfc54bff02a0cc145632d03b3fb597311b522921dcd6903",
+      "bytes": 1215
+    },
+    {
+      "path": "tests/test_workflows.py",
+      "sha256": "ad3d689901379479d2f14a4515e604ca13485fff517cc5f8375bf5b111f9b24b",
+      "bytes": 19607
+    }
+  ]
+}

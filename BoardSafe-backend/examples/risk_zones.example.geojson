@@ -1,0 +1,15 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-76.25, -9.94]},
+      "properties": {
+        "name": "EJEMPLO FICTICIO - Reemplazar antes de usar",
+        "radius_m": 500,
+        "susceptibility": 2,
+        "critical_access": false
+      }
+    }
+  ]
+}
