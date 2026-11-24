@@ -1,6 +1,6 @@
 from functools import lru_cache
 from typing import Literal
-from pydantic import model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./boardsafe.db"
     jwt_secret: str = "dev-only-insecure-key-do-not-use-in-production"
     access_token_minutes: int = 60
+    jwt_clock_skew_seconds: int = Field(default=5, ge=0, le=30)
     cors_origins: str = "http://localhost:3000"
     osrm_base_url: str = ""
     routing_timeout_seconds: float = 8.0
@@ -17,6 +18,8 @@ class Settings(BaseSettings):
     vehicle_staleness_seconds: int = 180
     route_validity_minutes: int = 60
     event_poll_seconds: int = 2
+    bootstrap_admin_email: str = ""
+    bootstrap_admin_password: SecretStr = SecretStr("")
     ingest_token: str = ""
     open_meteo_enabled: bool = False
 

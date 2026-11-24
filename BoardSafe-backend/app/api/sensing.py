@@ -1,17 +1,22 @@
 """Restricted device metadata and verified external hydrometeorological ingestion."""
 import secrets
-from datetime import timezone, timedelta
+from datetime import timedelta
 from fastapi import APIRouter,Depends,HTTPException,Header
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db import get_db,now_utc
 from app.models import User,EdgeNode,EdgeEvent,Stop,Vehicle,RainReading
-from app.schemas import EdgeNodeIn,EdgeSignal,RainIn
+from app.schemas import EdgeNodeIn,EdgeNodeOut,EdgeSignal,RainIn
 from app.security import require_roles,hash_node_secret,secure_equals
 from app.services import must,resource,record,safety_lock
+from app.time_utils import to_utc_naive
 
 router=APIRouter(tags=["Sensores y observaciones"])
+
+@router.get("/edge/nodes",response_model=list[EdgeNodeOut])
+def list_edge_nodes(db:Session=Depends(get_db),user:User=Depends(require_roles("admin"))):
+    return [{key:value for key,value in resource(node).items() if key in EdgeNodeOut.model_fields} for node in db.scalars(select(EdgeNode).order_by(EdgeNode.created_at.desc()).limit(500)).all()]
 
 @router.post("/edge/nodes",status_code=201)
 def create_edge_node(body:EdgeNodeIn,db:Session=Depends(get_db),user:User=Depends(require_roles("admin"))):
@@ -32,7 +37,7 @@ def ingest_edge(id:str,body:EdgeSignal,x_node_key:str=Header(default=""),db:Sess
     node=must(db,EdgeNode,id)
     if not node.enabled or node.kind != "camera" or not x_node_key or not secure_equals(node.secret_hash,hash_node_secret(x_node_key)):
         raise HTTPException(401,"Nodo no autorizado")
-    observed=body.observed_at.replace(tzinfo=None)
+    observed=to_utc_naive(body.observed_at)
     if abs((now_utc()-observed).total_seconds())>120:
         raise HTTPException(422,"La lectura del sensor está fuera de la ventana permitida")
     if body.confidence < 0.55:
@@ -60,7 +65,7 @@ def ingest_rain(body:RainIn,x_ingest_token:str=Header(default=""),db:Session=Dep
     s=get_settings()
     if not s.ingest_token or not secure_equals(x_ingest_token,s.ingest_token):
         raise HTTPException(401,"Origen meteorológico no autorizado")
-    observed=body.observed_at.replace(tzinfo=None)
+    observed=to_utc_naive(body.observed_at)
     if body.kind=="observation" and observed>now_utc()+timedelta(minutes=5):
         raise HTTPException(422,"Una observación no puede estar en el futuro")
     if observed>now_utc()+timedelta(days=8):raise HTTPException(422,"Fecha fuera de rango")

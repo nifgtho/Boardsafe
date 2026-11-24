@@ -5,7 +5,7 @@ from app.config import get_settings
 from app.db import get_db,now_utc
 from app.models import User,Stop,Vehicle
 from app.schemas import StopIn,StopBay,VehicleIn,VehicleCheck
-from app.security import require_roles,get_current_user
+from app.security import require_roles
 from app.services import must,resource,record,safety_lock
 from app.domain.rules import is_fresh
 

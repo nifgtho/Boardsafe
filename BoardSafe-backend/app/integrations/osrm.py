@@ -1,7 +1,6 @@
 """Actual HTTP routing against OSRM. Never creates synthetic straight-line routes."""
 from urllib.parse import urlsplit
 import httpx
-from fastapi import HTTPException
 from app.config import get_settings
 
 class RoutingUnavailable(Exception):

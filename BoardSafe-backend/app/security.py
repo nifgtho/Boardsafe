@@ -32,14 +32,20 @@ def create_access_token(user: User):
 
 def decode_token(token: str):
     try:
-        return jwt.decode(token, get_settings().jwt_secret, algorithms=["HS256"], issuer="boardsafe", options={"require": ["sub", "exp", "iat", "iss"]})
+        # Bounded clock skew tolerates clock corrections without disabling dates.
+        settings = get_settings()
+        return jwt.decode(token, settings.jwt_secret, algorithms=["HS256"], issuer="boardsafe", leeway=settings.jwt_clock_skew_seconds, options={"require": ["sub", "exp", "iat", "iss", "jti"]})
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Sesión inválida o expirada")
 
 def get_current_user(auth: HTTPAuthorizationCredentials | None = Depends(bearer), db: Session = Depends(get_db)) -> User:
     if not auth or auth.scheme.lower() != "bearer":
         raise HTTPException(status_code=401, detail="Inicie sesión")
-    claims = decode_token(auth.credentials)
+    return get_token_user(auth.credentials, db)
+
+def get_token_user(token: str, db: Session) -> User:
+    """Revalidate identity and revocation for HTTP and persistent connections."""
+    claims = decode_token(token)
     if claims.get("jti") and db.get(RevokedToken, claims["jti"]):
         raise HTTPException(status_code=401, detail="La sesión se cerró")
     user = db.get(User, claims["sub"])

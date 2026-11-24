@@ -147,6 +147,34 @@
       }
     },
     "/api/v1/auth/staff": {
+      "get": {
+        "tags": [
+          "Autenticación"
+        ],
+        "summary": "List Staff",
+        "operationId": "list_staff_api_v1_auth_staff_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StaffOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Staff Api V1 Auth Staff Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
       "post": {
         "tags": [
           "Autenticación"
@@ -1244,6 +1272,34 @@
       }
     },
     "/api/v1/edge/nodes": {
+      "get": {
+        "tags": [
+          "Sensores y observaciones"
+        ],
+        "summary": "List Edge Nodes",
+        "operationId": "list_edge_nodes_api_v1_edge_nodes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EdgeNodeOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Edge Nodes Api V1 Edge Nodes Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
       "post": {
         "tags": [
           "Sensores y observaciones"
@@ -2304,6 +2360,88 @@
         ],
         "title": "EdgeNodeIn"
       },
+      "EdgeNodeOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "camera",
+              "totem"
+            ],
+            "title": "Kind"
+          },
+          "stop_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Id"
+          },
+          "vehicle_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vehicle Id"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "kind",
+          "stop_id",
+          "vehicle_id",
+          "enabled",
+          "last_seen_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "EdgeNodeOut"
+      },
       "EdgeSignal": {
         "properties": {
           "event_type": {
@@ -2868,6 +3006,42 @@
           "destination_lon"
         ],
         "title": "RoutingRequest"
+      },
+      "StaffOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "driver",
+              "dispatcher",
+              "inspector",
+              "authority",
+              "admin"
+            ],
+            "title": "Role"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "role",
+          "active"
+        ],
+        "title": "StaffOut"
       },
       "StopBay": {
         "properties": {

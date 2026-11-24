@@ -1,4 +1,6 @@
 .env
+.admin-local.txt
+.demo-local.txt
 *.db
 *.sqlite
 __pycache__/

@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from app.models import AuditLog, DomainEvent, RoadRestriction, RoutePlan, Assistance
-from app.db import now_utc
 from app.domain.rules import route_blockers
+from app.time_utils import utc_iso
 
 def must(db: Session, cls, ident: str):
     item = db.get(cls, ident)
@@ -16,7 +16,7 @@ def must(db: Session, cls, ident: str):
 def resource(obj, exclude=None):
     """Serialize SQLAlchemy scalar columns; prevent incidental relationship leakage."""
     data = {c.name: getattr(obj,c.name) for c in obj.__table__.columns if c.name not in (exclude or set())}
-    return jsonable_encoder(data)
+    return jsonable_encoder(data, custom_encoder={datetime: utc_iso})
 
 def record(db: Session, actor_id: str | None, action: str, entity, *, detail=None, public_payload=None):
     """Transactionally persist audit + outbox in the same DB transaction as the mutation."""

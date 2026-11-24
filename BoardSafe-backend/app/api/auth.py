@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models import User,RevokedToken
-from app.schemas import Account, Login, CreateStaff
+from app.schemas import Account, Login, CreateStaff, StaffOut
 from app.security import password_hash, password_verify, create_access_token, get_current_user, require_roles, decode_token, bearer
 from app.services import record
 
@@ -42,6 +42,12 @@ def create_staff(body:CreateStaff,db:Session=Depends(get_db),admin:User=Depends(
     db.add(u);db.flush();record(db,admin.id,"user.staff_created",u,detail={"role":u.role})
     db.commit()
     return {"id":u.id,"email":u.email,"role":u.role}
+
+@router.get("/staff", response_model=list[StaffOut])
+def list_staff(db:Session=Depends(get_db),admin:User=Depends(require_roles("admin"))):
+    roles=("driver","dispatcher","inspector","authority","admin")
+    users=db.scalars(select(User).where(User.role.in_(roles)).order_by(User.email).limit(500)).all()
+    return [{"id":u.id,"email":u.email,"role":u.role,"active":u.active} for u in users]
 
 
 @router.post("/logout")
