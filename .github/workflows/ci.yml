@@ -1,0 +1,127 @@
+name: BoardSafe checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: BoardSafe-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: BoardSafe-backend/pyproject.toml
+      - run: python -m pip install --require-hashes -r requirements.lock
+      - run: python -m pip install -e '.[test]'
+      - name: Check handoff helpers
+        working-directory: .
+        run: python -m unittest discover -s scripts/tests -v
+      - run: python -m ruff check app --select F401,F841
+      - run: python -m compileall -q app
+      - run: python -m pytest --cov=app --cov-report=term-missing
+      - name: Check migrations
+        env:
+          BOARDSAFE_DATABASE_URL: sqlite:////tmp/boardsafe-ci.sqlite
+          BOARDSAFE_ENVIRONMENT: test
+          BOARDSAFE_BOOTSTRAP_ADMIN_EMAIL: ci-admin@boardsafe.test
+          BOARDSAFE_BOOTSTRAP_ADMIN_PASSWORD: ci-only-bootstrap-password-not-for-production
+        run: |
+          python -m app.cli migrate
+          python -m app.cli migrate
+          python -m alembic current
+      - run: python scripts/export_openapi.py
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: boardsafe-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: boardsafe-frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npx tsc --noEmit
+
+  journeys:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: boardsafe-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: boardsafe-frontend/package-lock.json
+      - name: Prepare isolated backend
+        working-directory: BoardSafe-backend
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install -e '.[test]'
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium --only-shell
+      - name: Run browser journey with temporary data
+        run: |
+          cp .env.example .env.local
+          npm run dev -- --hostname 127.0.0.1 --port 3000 > "$RUNNER_TEMP/boardsafe-web.log" 2>&1 &
+          BOARDSAFE_WEB_PID=$!
+          trap 'kill "$BOARDSAFE_WEB_PID" 2>/dev/null || true' EXIT
+          python - <<'PY'
+          import time
+          import urllib.request
+          for attempt in range(60):
+              try:
+                  with urllib.request.urlopen("http://127.0.0.1:3000", timeout=2) as response:
+                      if response.status == 200:
+                          break
+              except Exception:
+                  time.sleep(1)
+          else:
+              raise SystemExit("Frontend did not become ready")
+          PY
+          npm run test:journeys
+          python ../scripts/verify_postgres.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: journey-browser-evidence
+          path: boardsafe-frontend/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  containers:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t boardsafe-api:check BoardSafe-backend
+      - run: docker build -t boardsafe-frontend:check boardsafe-frontend

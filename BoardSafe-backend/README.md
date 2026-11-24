@@ -2,9 +2,13 @@
 
 **Versión 1.0 · 20 de noviembre de 2026 · WFEO Hackathon 2027 (retos 1, 3 y 4)**
 
+La documentación principal de la integración está en [README del repositorio](../README.md).
+La demostración local se crea únicamente mediante `python -m app.cli seed-demo`:
+conductor, paradero y vehículo etiquetados como DEMO; nunca se cargan al iniciar.
+
 **Este repositorio NO es la presentación HTML ni un simulador con datos precargados.** Es un backend de aplicación persistente con API REST, autenticación por roles, transacciones, reglas operacionales, reportes de campo, sensores, mapas GeoJSON, motor OSRM, observaciones meteorológicas y procesos de vigilancia/recuperación. No incluye personas, rutas, peligros o vehículos ficticios en la base de datos inicial.
 
-**Estado verificado:** 27 pruebas de API y lógica aprobaron localmente con SQLite y se probó la cadena de migraciones. **Estado NO verificado:** despliegue PostgreSQL/PostGIS + Docker/OSRM a escala o con datos reales, integraciones oficiales, CCTV físico y certificaciones regulatorias. Es un backend funcional para integración, no una plataforma homologada para dirigir emergencias reales.
+**Estado verificado:** 58 pruebas de API y lógica aprobaron localmente con SQLite y se probó la cadena de migraciones. Se comprobó además el arranque Docker/PostgreSQL/PostGIS con migraciones, autenticación y cuenta limitada. **Estado NO verificado:** operación a escala, OSRM propio o datos reales, integraciones oficiales, CCTV físico y certificaciones regulatorias. Es un backend funcional para integración, no una plataforma homologada para dirigir emergencias reales.
 
 ## 1. Qué resuelve exactamente
 
@@ -64,7 +68,9 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000
 - Enrutamiento OSRM devuelve `503` hasta configurar `BOARDSAFE_OSRM_BASE_URL`; **no se fabrican rutas**.
 - El endpoint meteorológico para Open-Meteo está desactivado inicialmente por cuestiones de licencia y responsabilidad. Los sensores físicos necesitan registro y secreto.
 
-## 4. Docker/PostGIS — despliegue previsto
+## 4. Docker/PostGIS
+
+Para entregar la aplicación completa utiliza [la guía de despliegue integrada](../docs/ENTREGA_Y_DESPLIEGUE.md) y `compose.deploy.yaml` de la raíz, que incluyen frontend y gateway. Los comandos siguientes corresponden al Compose del backend para desarrollo/integración y no configuran la web ni TLS.
 
 Requisitos: Docker Engine + Compose, RAM/disk suficientes para OSRM y acceso a registros de contenedores.
 
@@ -75,8 +81,8 @@ cp .env.example .env
 openssl rand -hex 32
 # Primero PostgreSQL, migraciones, API y worker:
 docker compose up -d --build postgres migrate api worker
-# Cree el administrador (interactivo):
-docker compose exec api python -m app.cli bootstrap-admin --email admin@su-dominio.com
+# El servicio migrate crea el admin si configura ambas variables de bootstrap.
+# No imprime la clave ni cambia cuentas existentes.
 # Compruebe estado:
 curl http://127.0.0.1:8000/health/ready
 ```
@@ -159,3 +165,5 @@ La suite cubre: autenticación/roles, acceso privado, integración del COC, cier
 - WCAG 2.2: https://www.w3.org/TR/WCAG22/
 
 **BoardSafe** · Software de decisión y coordinación, no sustituto de seguridad operativa certificada.
+
+Administrador automático: [configuración y comando migrate](../docs/ADMIN_AUTOMATICO.md).

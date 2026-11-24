@@ -1,0 +1,15 @@
+.git
+.env*
+.venv
+*.db*
+*.sqlite*
+.admin-local.txt
+.demo-local.txt
+__pycache__
+.pytest_cache
+.ruff_cache
+.coverage
+htmlcov
+boardsafe_backend.egg-info
+data
+tests
