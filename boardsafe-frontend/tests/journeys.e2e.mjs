@@ -97,7 +97,8 @@ async function visible(locator) {
 }
 
 async function session(role) {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  const viewport = role === "passenger" ? { width: 390, height: 844 } : { width: 1440, height: 1000 };
+  const context = await browser.newContext({ viewport });
   const sockets = [];
   socketsByRole.set(role, sockets);
   await context.routeWebSocket("**/api/v1/ws/events", (route) => {
@@ -134,6 +135,7 @@ async function session(role) {
     }
   });
   await page.goto(web);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "El acceso cabe en la pantalla");
   await page.getByLabel("Correo electrónico").fill(`${role}@boardsafe.test`);
   await page.getByLabel(/^Contraseña/).fill(password);
   await page.getByRole("button", { name: "Entrar a BoardSafe" }).click();
@@ -142,6 +144,7 @@ async function session(role) {
 }
 
 async function exerciseRiskAndKiosk(authority, tokens, stop, vehicle) {
+  await authority.getByRole("navigation", { name: "Áreas de trabajo" }).getByRole("button", { name: "Riesgo y recursos", exact: true }).click();
   await authority.getByText("Registrar zona de inspección", { exact: true }).click();
   await authority.getByLabel("Nombre de zona", { exact: true }).fill("[E2E] Zona temporal");
   await authority.getByLabel("Latitud (zona)", { exact: true }).fill("-9.93");
@@ -176,6 +179,7 @@ async function exerciseRiskAndKiosk(authority, tokens, stop, vehicle) {
   assert.equal((await api(`/resources/recommend/${zone.id}`, tokens.authority)).options[0].asset_id, asset.id);
 
   const admin = await session("admin");
+  await admin.getByRole("navigation", { name: "Áreas de trabajo" }).getByRole("button", { name: "Nodos y tótems", exact: true }).click();
   await admin.getByLabel("Código del nodo").fill("E2E-TOTEM");
   await admin.getByRole("button", { name: "Actualizar nodos" }).click();
   try { await waitFor(async () => await admin.locator(`#node-target option[value="${stop.id}"]`).count() === 1, "node stop option"); }
@@ -256,6 +260,7 @@ try {
   browser = await chromium.launch({ headless: true, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
   console.log("E2E: personal y sesión institucional");
   const adminPage = await session("admin");
+  await adminPage.getByRole("navigation", { name: "Áreas de trabajo" }).getByRole("button", { name: "Personal", exact: true }).click();
   await visible(adminPage.getByRole("heading", { name: "Personal registrado", exact: true }));
   await visible(adminPage.getByText("driver@boardsafe.test", { exact: true }));
   await Promise.all([
@@ -270,6 +275,12 @@ try {
   await passenger.getByLabel("Paradero de origen").selectOption(stop.id);
   await passenger.getByLabel("Latitud de destino").fill("-9.92");
   await passenger.getByLabel("Longitud de destino").fill("-76.23");
+  const passengerNav = passenger.getByRole("navigation", { name: "Áreas de trabajo" });
+  await passengerNav.getByRole("button", { name: "Reportes y vías" }).click();
+  assert.equal(await passenger.getByLabel("Paradero de origen").isVisible(), false);
+  await passengerNav.getByRole("button", { name: "Viajes" }).click();
+  assert.equal(await passenger.getByLabel("Longitud de destino").inputValue(), "-76.23");
+  assert.ok(await passenger.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "El panel de pasajero cabe en móvil");
   await passenger.getByRole("checkbox", { name: /consiento|consentimiento|autorizo/i }).check();
   await passenger.getByRole("button", { name: /enviar solicitud|solicitar asistencia/i }).click();
   await waitFor(async () => (await api("/assistance", tokens.passenger)).length === 1, "passenger creates request");
@@ -283,7 +294,7 @@ try {
   await inspector.getByRole("button", { name: "Firmar verificación" }).click();
   await visible(inspector.getByText("Verificada y vigente", { exact: true }));
   await dispatch.getByRole("button", { name: /^Solicitudes/ }).click();
-  await dispatch.getByRole("button", { name: "Actualizar", exact: true }).last().click();
+  await dispatch.locator("#workspace-start").getByRole("button", { name: "Actualizar", exact: true }).click();
   await waitFor(async () => await dispatch.locator(`#assign-route-${request.id} option`).count() > 1, "verified route in selector");
   const routes = await api("/routes", tokens.dispatcher);
   await dispatch.getByLabel("Unidad con conductor").selectOption(vehicle.id);
@@ -301,18 +312,21 @@ try {
   await driverPage.getByRole("button", { name: "Confirmar abordaje seguro" }).click();
   await visible(driverPage.getByRole("button", { name: "Finalizar viaje" }));
 
+  await passenger.getByRole("navigation", { name: "Áreas de trabajo" }).getByRole("button", { name: "Reportes y vías", exact: true }).click();
   await passenger.getByLabel("Descripción del reporte").fill("[E2E] Daño vial que requiere una inspección de prueba");
   await passenger.getByLabel("Latitud del reporte").fill("-9.925");
   await passenger.getByLabel("Longitud del reporte").fill("-76.235");
   await passenger.getByRole("button", { name: "Enviar reporte", exact: true }).click();
   await waitFor(async () => (await api("/reports", tokens.passenger)).length === 1, "report created without automatic closure");
   assert.equal((await api("/roads/restrictions", tokens.authority)).length, 0);
+  await inspector.getByRole("navigation", { name: "Áreas de trabajo" }).getByRole("button", { name: "Reportes y vías", exact: true }).click();
   await inspector.getByRole("button", { name: "Actualizar reportes y vías" }).click();
   await inspector.getByLabel("Motivo de revisión").fill("Daño corroborado en el escenario temporal de pruebas");
   await inspector.getByRole("button", { name: "Guardar revisión del reporte" }).click();
   await waitFor(async () => (await api("/reports", tokens.inspector))[0].status === "verified", "report corroborated");
   assert.equal((await api("/roads/restrictions", tokens.authority)).length, 0);
   const authority = await session("authority");
+  await authority.getByRole("navigation", { name: "Áreas de trabajo" }).getByRole("button", { name: "Reportes y vías", exact: true }).click();
   await authority.getByRole("button", { name: "Dibujar tramo en mapa" }).click();
   for (const [lon, lat] of [[-76.235, -9.932], [-76.235, -9.918]]) {
     await authority.getByLabel("Latitud del punto de vía").fill(String(lat));
@@ -327,24 +341,26 @@ try {
   await authority.getByLabel("Evidencia de confirmación vial").fill("Cierre simulado exclusivamente en base de pruebas");
   await authority.getByRole("button", { name: "Confirmar restricción vial" }).click();
   await waitFor(async () => (await api(`/assistance/${request.id}`, tokens.passenger)).state === "interrupted", "closure interrupts journey");
-  await dispatch.getByRole("button", { name: "Actualizar", exact: true }).last().click();
+  await dispatch.locator("#workspace-start").getByRole("button", { name: "Actualizar", exact: true }).click();
   await visible(dispatch.getByRole("button", { name: "Recuperar viaje con alternativa" }));
   await dispatch.getByRole("button", { name: "Calcular alternativas viales" }).click();
-  await inspector.getByRole("button", { name: "Actualizar", exact: true }).last().click();
+  await inspector.getByRole("navigation", { name: "Áreas de trabajo" }).getByRole("button", { name: "Viajes", exact: true }).click();
+  await inspector.locator("#workspace-start").getByRole("button", { name: "Actualizar", exact: true }).click();
   await waitFor(async () => await inspector.getByLabel("Evidencia de inspección").count() === 2, "new alternative visible");
   const alternative = (await api("/routes", tokens.inspector)).find((route) => route.status === "candidate");
   await inspector.locator(`#verify-note-${alternative.id}`).fill("Desvío inspeccionado dentro del escenario de pruebas");
   await inspector.locator(`#verify-note-${alternative.id}`).locator("xpath=ancestor::form").getByRole("button", { name: "Firmar verificación" }).click();
   await dispatch.getByRole("button", { name: /^Solicitudes/ }).click();
-  await dispatch.getByRole("button", { name: "Actualizar", exact: true }).last().click();
+  await dispatch.locator("#workspace-start").getByRole("button", { name: "Actualizar", exact: true }).click();
   await waitFor(async () => await dispatch.locator(`#assign-route-${request.id} option`).count() > 1, "alternative is selectable");
   await dispatch.getByLabel("Ruta verificada para este destino").selectOption(alternative.id);
   await dispatch.getByRole("button", { name: "Recuperar viaje con alternativa" }).click();
   await waitFor(async () => (await api(`/assistance/${request.id}`, tokens.passenger)).state === "onboard", "recovery confirmed");
-  await driverPage.getByRole("button", { name: "Actualizar", exact: true }).last().click();
+  await driverPage.locator("#workspace-start").getByRole("button", { name: "Actualizar", exact: true }).click();
   await driverPage.getByRole("button", { name: "Finalizar viaje" }).click();
   await waitFor(async () => (await api(`/assistance/${request.id}`, tokens.passenger)).state === "completed", "journey completed");
-  await passenger.getByRole("button", { name: "Actualizar", exact: true }).last().click();
+  await passenger.getByRole("navigation", { name: "Áreas de trabajo" }).getByRole("button", { name: "Viajes", exact: true }).click();
+  await passenger.locator("#workspace-start").getByRole("button", { name: "Actualizar", exact: true }).click();
   await visible(passenger.getByText("Viaje completado", { exact: true }));
   await dispatch.getByRole("button", { name: /^Rutas/ }).click();
   await dispatch.getByRole("button", { name: "Ver en mapa", exact: true }).first().click();
@@ -354,6 +370,7 @@ try {
   console.log("E2E: reconexión, replay y auditoría");
   assert.equal(socketsByRole.get("passenger").length, 0, "Passengers must not open institutional sockets");
   assert.equal(socketsByRole.get("driver").length, 0, "Drivers must not open institutional sockets");
+  await dispatch.getByRole("navigation", { name: "Áreas de trabajo" }).getByRole("button", { name: "Continuidad", exact: true }).click();
   await visible(dispatch.getByText(/Eventos conectados/));
   const replayRequests = [];
   dispatch.on("request", (request) => { if (request.url().includes("/events?since_id=")) replayRequests.push(request.url()); });
@@ -361,13 +378,18 @@ try {
   await waitFor(async () => socketsByRole.get("dispatcher").length >= 2, "institutional reconnect");
   await visible(dispatch.getByText(/Eventos conectados/));
   await waitFor(async () => replayRequests.some((url) => Number(new URL(url).searchParams.get("since_id")) > 0), "replay uses last received event cursor");
+  await authority.getByRole("navigation", { name: "Áreas de trabajo" }).getByRole("button", { name: "Continuidad", exact: true }).click();
   await visible(authority.getByRole("heading", { name: "Continuidad y auditoría", exact: true }));
   await authority.getByText(/^Acciones auditadas/).click();
   await visible(authority.getByText("road.restriction_confirmed", { exact: true }));
-  console.log("E2E: riesgo, recursos y tótem");
-  await exerciseRiskAndKiosk(authority, tokens, stop, vehicle);
   await driverPage.getByRole("button", { name: "Salir", exact: true }).click();
   await visible(driverPage.getByRole("button", { name: "Entrar a BoardSafe" }));
+  for (const page of [driverPage, dispatch, passenger, inspector]) {
+    await page.context().unrouteAll({ behavior: "wait" });
+    await page.context().close();
+  }
+  console.log("E2E: riesgo, recursos y tótem");
+  await exerciseRiskAndKiosk(authority, tokens, stop, vehicle);
   assert.deepEqual(pageErrors, [], `Browser errors: ${pageErrors.join("; ")}`);
   const uniqueErrors = [...new Set(consoleErrors)];
   assert.deepEqual(uniqueErrors, [], `Browser console errors: ${uniqueErrors.join("; ")}`);

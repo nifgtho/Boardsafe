@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useCallback } from "react";
+import { Activity as ViewActivity, useState, useCallback } from "react";
 import {
   ShieldCheck,
   LogOut,
@@ -13,7 +13,7 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
-  Sparkles,
+  Route, BusFront, TrafficCone, Mountain, Activity, Users, Radio, MapPin,
   CheckCircle2,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -48,22 +48,32 @@ const ROLE_BADGE_COLORS: Record<string, string> = {
   authority: "border-rose-500/40 bg-rose-950/60 text-rose-300",
 };
 
-const DEMO_ROLES = [
-  { role: "admin", label: "Admin", email: "admin@boardsafe.local" },
-  { role: "dispatcher", label: "Despacho", email: "dispatcher@boardsafe.local" },
-  { role: "driver", label: "Conductor", email: "driver@boardsafe.local" },
-  { role: "inspector", label: "Inspector", email: "inspector@boardsafe.local" },
-  { role: "authority", label: "Autoridad", email: "authority@boardsafe.local" },
-  { role: "passenger", label: "Pasajero", email: "passenger@boardsafe.local" },
-];
+const sections = [
+  { id: "journey", label: "Viajes", icon: Route },
+  { id: "operations", label: "Paraderos y flota", icon: BusFront },
+  { id: "roads", label: "Reportes y vías", icon: TrafficCone },
+  { id: "risk", label: "Riesgo y recursos", icon: Mountain },
+  { id: "monitor", label: "Continuidad", icon: Activity },
+  { id: "staff", label: "Personal", icon: Users },
+  { id: "edge", label: "Nodos y tótems", icon: Radio },
+] as const;
+type SectionId = typeof sections[number]["id"];
 
 export default function HomePage() {
-  const { token, user, expiresIn, loading, login, registerPassenger, logout } = useAuth();
+  const { token, user, loading, login, registerPassenger, logout } = useAuth();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [highContrast, setHighContrast] = useState(false);
+
+  const [section, setSection] = useState<SectionId>("journey");
+
+  const [visited, setVisited] = useState<SectionId[]>(["journey"]);
+  function openSection(id: SectionId) {
+    setVisited((previous) => previous.includes(id) ? previous : [...previous, id]);
+    setSection(id);
+  }
 
   // Estado compartido entre el mapa y los paneles
   const [pickedCoords, setPickedCoords] = useState<{
@@ -94,6 +104,7 @@ export default function HomePage() {
   );
 
   const handlePreviewRoute = useCallback((id: string) => {
+    document.getElementById("workspace-map")?.scrollIntoView({ block: "start" });
     setPreviewRouteId(id);
     setRouteFocus((value) => value + 1);
   }, []);
@@ -134,6 +145,8 @@ export default function HomePage() {
 
     try {
       if (mode === "login") {
+        setSection("journey");
+        setVisited(["journey"]);
         setPickedCoords(null);
         setSelectedStopId(null);
         setRouteData({ token: null, routes: [] });
@@ -172,6 +185,14 @@ export default function HomePage() {
     const roleBadgeClass =
       ROLE_BADGE_COLORS[user.role] ?? "border-slate-700 bg-slate-800 text-slate-300";
 
+    const institutional = ["dispatcher", "inspector", "authority", "admin"].includes(user.role);
+    const visibleSections = sections.filter(({ id }) => {
+      if (id === "staff" || id === "edge") return user.role === "admin";
+      if (id === "monitor" || id === "risk") return institutional;
+      return id !== "operations" || user.role !== "passenger";
+    });
+    const withMap = ["journey", "operations", "roads", "risk"].includes(section);
+
     return (
       <div
         className={`min-h-screen ${
@@ -208,11 +229,6 @@ export default function HomePage() {
                 <span className="hidden sm:inline">Modo Tótem</span>
               </Link>
 
-              <span className="hidden rounded-lg bg-slate-800 px-2.5 py-1.5 text-xs text-slate-300 md:inline-flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Sesión ({expiresIn ? Math.round(expiresIn / 60) : 60} min)
-              </span>
-
               <button
                 type="button"
                 onClick={() => setHighContrast((v) => !v)}
@@ -235,101 +251,128 @@ export default function HomePage() {
           </div>
         </header>
 
-        <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-12">
-          <div className="space-y-6 lg:col-span-7">
-            <BoardSafeMap
-              token={token}
-              onSelectPoint={handleSelectPoint}
-              onSelectStop={handleSelectStop}
-              refreshTrigger={mapRefresh}
-              previewRoute={previewRoute}
-              routeFocus={routeFocus}
-              roadDraft={roadDraft}
-              drawingRoad={drawingRoad && ["admin", "authority"].includes(user.role)}
-              onAddRoadPoint={handleAddRoadPoint}
-            />
-          </div>
+        <main className="mx-auto max-w-[1480px] px-4 pb-12 sm:px-7">
+          <nav aria-label="Áreas de trabajo" className="my-5 flex flex-wrap gap-1.5 border-b border-slate-800 pb-4">
+            {visibleSections.map(({ id, label, icon: Icon }) => (
+              <button key={id} type="button" aria-current={section === id ? "page" : undefined}
+                onClick={() => openSection(id)}
+                className={`inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition ${section === id ? "bg-teal-300 text-slate-950" : "bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white"}`}>
+                <Icon size={16} aria-hidden="true" />{label}
+              </button>
+            ))}
+          </nav>
+          <div className={withMap ? "grid items-start gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]" : "mx-auto max-w-4xl"}>
+            <div id="workspace-start" tabIndex={-1} className="min-w-0 scroll-mt-32 space-y-4">
+              {withMap && <a href="#workspace-map" className="inline-flex items-center gap-2 text-sm font-semibold text-teal-300 xl:hidden"><MapPin size={16} />Ir al mapa</a>}
+              {visited.includes("staff") && user.role === "admin" && (
+                <ViewActivity mode={section === "staff" ? "visible" : "hidden"}>
+                  <AdminStaffPanel token={token} />
+                </ViewActivity>
+              )}
 
-          <div className="space-y-6 lg:col-span-5">
-            {user.role === "admin" && (
-              <>
-                <AdminStaffPanel token={token} />
-              </>
-            )}
+              {visited.includes("journey") && user.role !== "passenger" && (
+                <ViewActivity mode={section === "journey" ? "visible" : "hidden"}>
+                  <DispatchAssistancePanel
+                    key={token}
+                    token={token}
+                    role={user.role}
+                    refreshTrigger={mapRefresh}
+                    onDataChanged={triggerMapRefresh}
+                    onPreviewRoute={handlePreviewRoute}
+                    onRoutesChanged={handleRoutesChanged}
+                  />
+                </ViewActivity>
+              )}
 
-            {user.role !== "passenger" && (
-              <DispatchAssistancePanel
-                key={token}
+              {visited.includes("operations") && user.role !== "passenger" && (
+                <ViewActivity mode={section === "operations" ? "visible" : "hidden"}>
+                  <OperationsPanel
+                    key={`operations-${token}`}
+                    refreshTrigger={mapRefresh}
+                    token={token}
+                    role={user.role}
+                    pickedCoords={pickedCoords}
+                    selectedStopId={selectedStopId}
+                    onDataChanged={triggerMapRefresh}
+                  />
+                </ViewActivity>
+              )}
+
+              {visited.includes("journey") && user.role === "passenger" && (
+                <ViewActivity mode={section === "journey" ? "visible" : "hidden"}>
+                  <PassengerAssistancePanel
+                    token={token}
+                    pickedCoords={pickedCoords}
+                    selectedStopId={selectedStopId}
+                  />
+                </ViewActivity>
+              )}
+
+              {visited.includes("monitor") && institutional && (
+                <ViewActivity mode={section === "monitor" ? "visible" : "hidden"}>
+                  <MonitoringPanel
+                    key={`monitor-${token}`}
+                    token={token}
+                    role={user.role}
+                    refreshTrigger={mapRefresh}
+                    connection={events.status}
+                    lastEventId={events.lastEventId}
+                  />
+                </ViewActivity>
+              )}
+              {visited.includes("risk") && institutional && (
+                <ViewActivity mode={section === "risk" ? "visible" : "hidden"}>
+                  <RiskPanel
+                    key={`risk-${token}`}
+                    token={token}
+                    role={user.role}
+                    refreshTrigger={mapRefresh}
+                    pickedCoords={pickedCoords}
+                    onDataChanged={triggerMapRefresh}
+                  />
+                </ViewActivity>
+              )}
+              {visited.includes("edge") && user.role === "admin" && (
+                <ViewActivity mode={section === "edge" ? "visible" : "hidden"}>
+                  <EdgeNodesPanel
+                    key={`edge-${token}`}
+                    token={token}
+                    refreshTrigger={mapRefresh}
+                    onDataChanged={triggerMapRefresh}
+                  />
+                </ViewActivity>
+              )}
+
+              {visited.includes("roads") && (
+                <ViewActivity mode={section === "roads" ? "visible" : "hidden"}>
+                  <ResiliencePanel
+                    token={token}
+                    role={user.role}
+                    refreshTrigger={mapRefresh}
+                    pickedCoords={pickedCoords}
+                    roadPoints={roadDraft}
+                    drawingRoad={drawingRoad}
+                    onRoadPointsChange={setRoadDraft}
+                    onDrawingRoadChange={setDrawingRoad}
+                    onDataChanged={triggerMapRefresh}
+                  />
+                </ViewActivity>
+              )}
+            </div>
+            {withMap && <aside id="workspace-map" aria-label="Mapa del área de trabajo" tabIndex={-1} className="min-w-0 scroll-mt-32 xl:sticky xl:top-20">
+              <BoardSafeMap
                 token={token}
-                role={user.role}
+                onSelectPoint={handleSelectPoint}
+                onSelectStop={handleSelectStop}
                 refreshTrigger={mapRefresh}
-                onDataChanged={triggerMapRefresh}
-                onPreviewRoute={handlePreviewRoute}
-                onRoutesChanged={handleRoutesChanged}
+                previewRoute={previewRoute}
+                routeFocus={routeFocus}
+                roadDraft={roadDraft}
+                drawingRoad={section === "roads" && drawingRoad && ["admin", "authority"].includes(user.role)}
+                onAddRoadPoint={handleAddRoadPoint}
               />
-            )}
-
-            {["dispatcher", "driver", "inspector", "authority", "admin"].includes(user.role) && (
-              <OperationsPanel
-                key={`operations-${token}`}
-                refreshTrigger={mapRefresh}
-                token={token}
-                role={user.role}
-                pickedCoords={pickedCoords}
-                selectedStopId={selectedStopId}
-                onDataChanged={triggerMapRefresh}
-              />
-            )}
-
-            {user.role === "passenger" && (
-              <PassengerAssistancePanel
-                token={token}
-                pickedCoords={pickedCoords}
-                selectedStopId={selectedStopId}
-              />
-            )}
-
-            {["dispatcher", "inspector", "authority", "admin"].includes(user.role) && (
-              <>
-                <MonitoringPanel
-                  key={`monitor-${token}`}
-                  token={token}
-                  role={user.role}
-                  refreshTrigger={mapRefresh}
-                  connection={events.status}
-                  lastEventId={events.lastEventId}
-                />
-                <RiskPanel
-                  key={`risk-${token}`}
-                  token={token}
-                  role={user.role}
-                  refreshTrigger={mapRefresh}
-                  pickedCoords={pickedCoords}
-                  onDataChanged={triggerMapRefresh}
-                />
-              </>
-            )}
-            {user.role === "admin" && (
-              <EdgeNodesPanel
-                key={`edge-${token}`}
-                token={token}
-                refreshTrigger={mapRefresh}
-                onDataChanged={triggerMapRefresh}
-              />
-            )}
-
-            <ResiliencePanel
-              key={`resilience-${token}`}
-              token={token}
-              role={user.role}
-              refreshTrigger={mapRefresh}
-              pickedCoords={pickedCoords}
-              roadPoints={roadDraft}
-              drawingRoad={drawingRoad}
-              onRoadPointsChange={setRoadDraft}
-              onDrawingRoadChange={setDrawingRoad}
-              onDataChanged={triggerMapRefresh}
-            />
+              <a href="#workspace-start" className="mt-3 inline-block text-sm font-semibold text-teal-300 xl:hidden">Volver al formulario</a>
+            </aside>}
           </div>
         </main>
       </div>
@@ -340,53 +383,13 @@ export default function HomePage() {
   // Vista no autenticada: Login / Registro
   // ==========================================
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-teal-500 selection:text-white flex flex-col justify-between">
-      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center px-4 py-8 sm:py-12">
-        {/* Encabezado Hero */}
-        <header className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-600/20 text-teal-400 ring-1 ring-teal-500/40 shadow-lg shadow-teal-950/50">
-            <ShieldCheck className="h-8 w-8" aria-hidden="true" />
-          </div>
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-950/60 px-3 py-1 text-xs font-semibold text-teal-300 mb-2">
-            <Sparkles className="h-3 w-3" />
-            Continuidad Operativa Vial & Inclusión
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">BoardSafe</h1>
-          <p className="mt-2 text-sm text-slate-300 leading-relaxed max-w-md mx-auto">
-            Movilidad inclusiva, sensores Edge y resiliencia territorial (Cadena de Custodia Operativa)
-          </p>
+    <div className="access-shell min-h-screen bg-slate-950 text-slate-100">
+      <main className="mx-auto grid min-h-screen max-w-6xl content-center items-center gap-7 px-5 py-8 sm:px-10 lg:grid-cols-[1fr_0.9fr] lg:gap-20">
+        <header className="space-y-5">
+          <div className="flex items-center gap-3 text-lg font-bold"><ShieldCheck className="size-9 rounded-lg bg-teal-300 p-1.5 text-slate-950" />BoardSafe</div>
+          <h1 className="max-w-lg text-4xl font-semibold leading-[1.06] tracking-tight sm:text-5xl lg:text-6xl">Movilidad accesible<span className="text-teal-300"> y segura.</span></h1>
+          <p className="max-w-md text-base leading-relaxed text-slate-300">Solicita asistencia para tu viaje o ingresa con tu cuenta de personal para coordinar el servicio.</p>
         </header>
-
-        {/* Tarjeta destacada: Asistencia sin cuenta en el tótem */}
-        <div className="mb-6 overflow-hidden rounded-2xl border border-teal-500/40 bg-gradient-to-r from-teal-950/60 via-slate-900 to-slate-900 p-4 sm:p-5 shadow-xl shadow-teal-950/40">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-500/20 text-teal-400 ring-1 ring-teal-500/40">
-                <Accessibility className="h-5 w-5" aria-hidden="true" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="rounded-md bg-teal-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-teal-300">
-                    Modo Público
-                  </span>
-                  <h2 className="text-sm sm:text-base font-bold text-white">
-                    Asistencia sin cuenta
-                  </h2>
-                </div>
-                <p className="mt-1 text-xs text-slate-300 leading-relaxed">
-                  ¿Estás en un paradero o no tienes cuenta? Solicita asistencia de viaje accesible en pantalla pública.
-                </p>
-              </div>
-            </div>
-            <Link
-              href="/totem"
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm transition hover:bg-teal-500 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-teal-300"
-            >
-              <span>Asistencia sin cuenta en el tótem</span>
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
-          </div>
-        </div>
 
         {/* Formulario de Acceso Institucional / Pasajero */}
         <section
@@ -397,6 +400,7 @@ export default function HomePage() {
           <div className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-slate-950 p-1.5 border border-slate-800">
             <button
               type="button"
+              aria-pressed={mode === "login"}
               onClick={() => {
                 setMode("login");
                 setError(null);
@@ -412,6 +416,7 @@ export default function HomePage() {
             </button>
             <button
               type="button"
+              aria-pressed={mode === "register"}
               onClick={() => {
                 setMode("register");
                 setError(null);
@@ -469,7 +474,7 @@ export default function HomePage() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@boardsafe.local"
+                placeholder="nombre@ejemplo.com"
                 className="mt-1.5 w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 shadow-inner transition focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
               />
             </div>
@@ -516,36 +521,12 @@ export default function HomePage() {
             </button>
           </form>
 
-          {/* Selector rápido de credenciales de prueba para evaluación */}
-          {mode === "login" && (
-            <div className="mt-5 border-t border-slate-800 pt-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                Credenciales de prueba rápida:
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {DEMO_ROLES.map((item) => (
-                  <button
-                    key={item.role}
-                    type="button"
-                    onClick={() => {
-                      setEmail(item.email);
-                      setError(null);
-                    }}
-                    className="rounded-lg border border-slate-700 bg-slate-950/80 px-2.5 py-1 text-xs text-slate-300 transition hover:border-teal-500 hover:text-white active:scale-95"
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          <Link href="/totem" className="mt-6 flex items-center justify-between gap-3 border-t border-slate-700 pt-5 text-sm font-semibold text-teal-300 hover:text-white">
+            <span className="inline-flex items-center gap-2"><Accessibility size={18} />Asistencia sin cuenta en el tótem</span>
+            <ArrowRight size={18} aria-hidden="true" />
+          </Link>
         </section>
       </main>
-
-      {/* Pie de página */}
-      <footer className="mx-auto max-w-xl px-4 py-6 text-center text-xs text-slate-500">
-        <p>BoardSafe · Resiliencia Territorial & Accesibilidad Universal</p>
-      </footer>
     </div>
   );
 }

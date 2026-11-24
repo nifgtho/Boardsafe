@@ -737,7 +737,7 @@ export function BoardSafeMap({
         </div>
       )}
 
-      <div ref={containerRef} className="h-[460px] w-full" />
+      <div ref={containerRef} className="h-[min(58svh,460px)] min-h-64 w-full" />
 
       {drawingRoad && <p role="status" className="bg-orange-950 px-4 py-3 text-sm text-orange-100">Dibujo de restricción: pulsa sobre el mapa para añadir puntos. Borrador de {roadDraft.length} puntos; todavía no hay cierre confirmado.</p>}
 

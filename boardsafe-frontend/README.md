@@ -5,6 +5,12 @@ vehículos y el ciclo de asistencia: planificación de rutas, verificación huma
 asignación, aceptación, abordaje, recuperación y finalización. Incluye reportes/revisión/cierres, riesgo/clima/recursos, eventos institucionales,
 métricas y auditoría por rol, provisionamiento Edge y tótem público con proxy privado.
 
+## Navegación
+
+Al entrar se abre **Viajes**, con el flujo correspondiente a la cuenta. El menú muestra las demás áreas habilitadas para ese rol. Por ejemplo, un pasajero puede abrir **Reportes y vías**, y un administrador encuentra las cuentas en **Personal** y los dispositivos en **Nodos y tótems**. Puedes cambiar de área y volver al formulario durante la misma sesión sin perder el borrador.
+
+En escritorio, el mapa aparece junto al formulario de las tareas geográficas. En pantallas pequeñas, **Ir al mapa** y **Volver al formulario** permiten alternar entre ambos. Desde el acceso principal, **Asistencia sin cuenta en el tótem** abre la terminal pública.
+
 ## Arranque local
 
 El checkout está preparado con Python 3.12 en `BoardSafe-backend/.venv`.
