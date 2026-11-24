@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { closeSessionConnections } from "@/lib/sessionConnections";
 import { apiRequest } from "@/lib/api";
 import type { AuthUser, LoginResponse } from "@/types/boardsafe";
 
@@ -22,6 +23,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [expiresIn, setExpiresIn] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!token || !expiresIn) return;
+    const timer = window.setTimeout(() => {
+      closeSessionConnections();
+      setToken(null);
+      setUser(null);
+      setExpiresIn(null);
+    }, expiresIn * 1000);
+    return () => window.clearTimeout(timer);
+  }, [token, expiresIn]);
 
   const login = useCallback(async (email: string, password: string) => {
     setLoading(true);
@@ -62,6 +74,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    closeSessionConnections();
+    setToken(null);
+    setUser(null);
+    setExpiresIn(null);
     if (token) {
       try {
         await apiRequest("/auth/logout", { method: "POST", token });
@@ -69,9 +85,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Si ya expiró, igual limpiamos la sesión en memoria
       }
     }
-    setToken(null);
-    setUser(null);
-    setExpiresIn(null);
   }, [token]);
 
   return (

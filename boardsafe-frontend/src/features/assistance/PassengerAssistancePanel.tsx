@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Accessibility,
   Volume2,
@@ -162,7 +162,7 @@ export function PassengerAssistancePanel({
 }: PassengerAssistancePanelProps) {
   const [stops, setStops] = useState<StopRecord[]>([]);
   const [requests, setRequests] = useState<AssistanceRecord[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [busyActionId, setBusyActionId] = useState<string | null>(null);
   const [speakingId, setSpeakingId] = useState<string | null>(null);
@@ -171,27 +171,29 @@ export function PassengerAssistancePanel({
   const [feedback, setFeedback] = useState<string | null>(null);
 
   // Campos exactos de AssistanceIn
-  const [stopId, setStopId] = useState("");
-  const [destLat, setDestLat] = useState("");
-  const [destLon, setDestLon] = useState("");
-  const [destLabel, setDestLabel] = useState<string | null>(null);
+  const [stopId, setStopId] = useState(selectedStopId ?? "");
+  const [destLat, setDestLat] = useState(pickedCoords ? String(pickedCoords.lat) : "");
+  const [destLon, setDestLon] = useState(pickedCoords ? String(pickedCoords.lon) : "");
+  const [destLabel, setDestLabel] = useState<string | null>(pickedCoords?.suggestedName ?? null);
   const [support, setSupport] = useState<SupportOption[]>(["ramp"]);
   const [consent, setConsent] = useState(false);
 
-  // Sincroniza coordenadas y nombre sugerido al hacer clic o buscar en el mapa
-  useEffect(() => {
-    if (!pickedCoords) return;
-    setDestLat(String(pickedCoords.lat));
-    setDestLon(String(pickedCoords.lon));
-    setDestLabel(pickedCoords.suggestedName ?? null);
-  }, [pickedCoords]);
+  const [previousCoords, setPreviousCoords] = useState(pickedCoords);
+  if (pickedCoords !== previousCoords) {
+    setPreviousCoords(pickedCoords);
+    if (pickedCoords) {
+      setDestLat(String(pickedCoords.lat));
+      setDestLon(String(pickedCoords.lon));
+      setDestLabel(pickedCoords.suggestedName ?? null);
+    }
+  }
 
   // Sincroniza cuando el pasajero hace clic directamente en un paradero del mapa
-  useEffect(() => {
-    if (selectedStopId) {
-      setStopId(selectedStopId);
-    }
-  }, [selectedStopId]);
+  const [previousStopId, setPreviousStopId] = useState(selectedStopId);
+  if (selectedStopId !== previousStopId) {
+    setPreviousStopId(selectedStopId);
+    if (selectedStopId) setStopId(selectedStopId);
+  }
 
   // Detiene síntesis de voz al desmontar
   useEffect(() => {
@@ -202,18 +204,16 @@ export function PassengerAssistancePanel({
     };
   }, []);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [stopsData, reqData] = await Promise.all([
-        apiRequest<StopRecord[]>("/stops", { token }),
-        apiRequest<AssistanceRecord[]>("/assistance", { token }),
-      ]);
+  const loadData = useCallback(() => {
+    return Promise.all([
+      apiRequest<StopRecord[]>("/stops", { token }),
+      apiRequest<AssistanceRecord[]>("/assistance", { token }),
+    ]).then(([stopsData, reqData]) => {
+      setError(null);
       setStops(stopsData);
       setRequests(reqData);
       setStopId((prev) => prev || stopsData[0]?.id || "");
-    } catch (err) {
+    }).catch((err: unknown) => {
       if (err instanceof BoardSafeError) {
         setError({
           message: err.message,
@@ -227,13 +227,17 @@ export function PassengerAssistancePanel({
           hint: "Verifica tu conexión e intenta recargar.",
         });
       }
-    } finally {
+    }).finally(() => {
       setLoading(false);
-    }
+    });
   }, [token]);
 
   useEffect(() => {
     loadData();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void loadData();
+    }, 10000);
+    return () => window.clearInterval(timer);
   }, [loadData]);
 
   function toggleSupport(opt: SupportOption) {
@@ -281,7 +285,7 @@ export function PassengerAssistancePanel({
 
     const lat = Number(destLat);
     const lon = Number(destLon);
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    if (!destLat.trim() || !destLon.trim() || !Number.isFinite(lat) || !Number.isFinite(lon)) {
       setError({
         message: "Faltan coordenadas de destino válidas.",
         reasons: ["Haz clic en el mapa o usa el buscador superior para fijar tu destino."],
@@ -370,10 +374,7 @@ export function PassengerAssistancePanel({
     }
   }
 
-  const stopById = useMemo(
-    () => new Map(stops.map((s) => [s.id, s])),
-    [stops]
-  );
+  const stopById = new Map(stops.map((s) => [s.id, s]));
 
   const selectedStop = stopId ? stopById.get(stopId) : undefined;
 
@@ -400,7 +401,7 @@ export function PassengerAssistancePanel({
 
         <button
           type="button"
-          onClick={loadData}
+          onClick={() => { setLoading(true); void loadData(); }}
           disabled={loading}
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-slate-700 disabled:opacity-60"
         >

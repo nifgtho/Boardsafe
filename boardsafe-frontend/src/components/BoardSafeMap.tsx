@@ -13,13 +13,19 @@ import {
   X,
 } from "lucide-react";
 import { apiRequest, BoardSafeError } from "@/lib/api";
-import type { BayStatus, StopRecord } from "@/types/boardsafe";
+import type { BayStatus, RoutePlanRecord, StopRecord } from "@/types/boardsafe";
+import { ROUTE_LABELS, routeState } from "@/features/assistance/journeys";
 
 interface BoardSafeMapProps {
   token: string;
   onSelectPoint?: (lat: number, lon: number, suggestedName?: string) => void;
   onSelectStop?: (stop: StopRecord) => void;
   refreshTrigger?: number;
+  previewRoute?: RoutePlanRecord | null;
+  routeFocus?: number;
+  roadDraft?: [number, number][];
+  drawingRoad?: boolean;
+  onAddRoadPoint?: (lon: number, lat: number) => void;
 }
 
 interface SearchHit {
@@ -224,17 +230,60 @@ export function BoardSafeMap({
   onSelectPoint,
   onSelectStop,
   refreshTrigger = 0,
+  previewRoute = null,
+  routeFocus = 0,
+  roadDraft = [],
+  drawingRoad = false,
+  onAddRoadPoint,
 }: BoardSafeMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const pickMarkerRef = useRef<maplibregl.Marker | null>(null);
   const stopMarkersRef = useRef<maplibregl.Marker[]>([]);
   const loadedRef = useRef(false);
+  const routeRef = useRef(previewRoute);
+  const lastRouteFocus = useRef(-1);
+  const roadRef = useRef({ points: roadDraft, drawing: drawingRoad, onAddRoadPoint });
+  const renderDraft = useCallback((points: [number, number][]) => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current) return;
+    const features: GeoJSON.Feature[] = points.map((point) => ({ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: point } }));
+    if (points.length >= 2) features.push({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: points } });
+    (map.getSource("road-draft") as maplibregl.GeoJSONSource | undefined)?.setData({ type: "FeatureCollection", features });
+  }, []);
+  useEffect(() => {
+    roadRef.current = { points: roadDraft, drawing: drawingRoad, onAddRoadPoint };
+    renderDraft(roadDraft);
+    if (mapRef.current) mapRef.current.getCanvas().style.cursor = drawingRoad ? "crosshair" : "";
+  }, [roadDraft, drawingRoad, onAddRoadPoint, renderDraft]);
+
+  const renderRoute = useCallback((route: RoutePlanRecord | null, fit: boolean) => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current) return;
+    const source = map.getSource("journey-route") as maplibregl.GeoJSONSource | undefined;
+    source?.setData(route ? {
+      type: "FeatureCollection",
+      features: [{ type: "Feature", geometry: route.geometry, properties: { state: routeState(route) } }],
+    } : EMPTY_FC);
+    if (route && fit && route.geometry.coordinates.length > 0) {
+      const bounds = new maplibregl.LngLatBounds();
+      route.geometry.coordinates.forEach((point) => bounds.extend(point));
+      map.fitBounds(bounds, { padding: 50, maxZoom: 16, duration: 500 });
+    }
+  }, []);
+
+  useEffect(() => {
+    routeRef.current = previewRoute;
+    renderRoute(previewRoute, lastRouteFocus.current !== routeFocus);
+    lastRouteFocus.current = routeFocus;
+  }, [previewRoute, routeFocus, renderRoute]);
 
   const onSelectPointRef = useRef(onSelectPoint);
   const onSelectStopRef = useRef(onSelectStop);
-  onSelectPointRef.current = onSelectPoint;
-  onSelectStopRef.current = onSelectStop;
+  useEffect(() => {
+    onSelectPointRef.current = onSelectPoint;
+    onSelectStopRef.current = onSelectStop;
+  }, [onSelectPoint, onSelectStop]);
 
   const [stops, setStops] = useState<StopRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -283,20 +332,13 @@ export function BoardSafeMap({
     setLoading(true);
     setErrorMsg(null);
     try {
-      const [geojsonRes, stopsRes] = await Promise.allSettled([
+      const [geojson, stopsList] = await Promise.all([
         apiRequest<GeoJSON.FeatureCollection>("/map/features", { token }),
         apiRequest<StopRecord[]>("/stops", { token }),
       ]);
 
-      const stopsList = stopsRes.status === "fulfilled" ? stopsRes.value : [];
       setStops(stopsList);
       renderStopMarkers(stopsList);
-
-      const geojson =
-        geojsonRes.status === "fulfilled" &&
-        geojsonRes.value?.type === "FeatureCollection"
-          ? geojsonRes.value
-          : EMPTY_FC;
 
       setFeatureCount(Math.max(geojson.features.length, stopsList.length));
 
@@ -319,6 +361,7 @@ export function BoardSafeMap({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs");
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: buildMapStyle(),
@@ -335,6 +378,26 @@ export function BoardSafeMap({
       map.addSource("boardsafe", {
         type: "geojson",
         data: EMPTY_FC,
+      });
+
+      map.addSource("journey-route", { type: "geojson", data: EMPTY_FC });
+      map.addSource("road-draft", { type: "geojson", data: EMPTY_FC });
+      map.addLayer({ id: "road-draft-line", type: "line", source: "road-draft", filter: ["==", ["geometry-type"], "LineString"], paint: { "line-color": "#fb923c", "line-width": 5, "line-dasharray": [1, 1] } });
+      map.addLayer({ id: "road-draft-points", type: "circle", source: "road-draft", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-color": "#fb923c", "circle-radius": 6, "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } });
+      map.addLayer({
+        id: "journey-route-candidate", type: "line", source: "journey-route",
+        filter: ["==", ["get", "state"], "candidate"],
+        paint: { "line-color": "#fbbf24", "line-width": 5, "line-dasharray": [2, 2] },
+      });
+      map.addLayer({
+        id: "journey-route-verified", type: "line", source: "journey-route",
+        filter: ["==", ["get", "state"], "verified"],
+        paint: { "line-color": "#2dd4bf", "line-width": 6 },
+      });
+      map.addLayer({
+        id: "journey-route-unavailable", type: "line", source: "journey-route",
+        filter: ["in", ["get", "state"], ["literal", ["blocked", "revoked", "expired"]]],
+        paint: { "line-color": "#fb7185", "line-width": 6 },
       });
 
       // Zonas de riesgo
@@ -357,9 +420,9 @@ export function BoardSafeMap({
         id: "boardsafe-restrictions",
         type: "line",
         source: "boardsafe",
-        filter: ["==", ["get", "kind"], "road_restriction"],
+        filter: ["all", ["==", ["get", "kind"], "road_restriction"], ["in", ["get", "status"], ["literal", ["closed", "restricted"]]]],
         paint: {
-          "line-color": "#ef4444",
+          "line-color": ["match", ["get", "status"], "closed", "#ef4444", "#fbbf24"],
           "line-width": 5,
           "line-opacity": 0.9,
         },
@@ -380,11 +443,18 @@ export function BoardSafeMap({
       });
 
       loadFeatures();
+      renderRoute(routeRef.current, true);
+      renderDraft(roadRef.current.points);
+      map.getCanvas().style.cursor = roadRef.current.drawing ? "crosshair" : "";
     });
 
     map.on("click", (e) => {
       const lat = Number(e.lngLat.lat.toFixed(6));
       const lon = Number(e.lngLat.lng.toFixed(6));
+      if (roadRef.current.drawing) {
+        roadRef.current.onAddRoadPoint?.(lon, lat);
+        return;
+      }
       setPicked({ lat, lon });
       onSelectPointRef.current?.(lat, lon);
 
@@ -408,12 +478,16 @@ export function BoardSafeMap({
       map.remove();
       mapRef.current = null;
     };
-  }, [loadFeatures]);
+  }, [loadFeatures, renderRoute, renderDraft]);
 
   useEffect(() => {
     if (loadedRef.current) {
       loadFeatures();
     }
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible" && loadedRef.current) void loadFeatures();
+    }, 10000);
+    return () => window.clearInterval(timer);
   }, [refreshTrigger, loadFeatures]);
 
   function toggleBasemap() {
@@ -664,6 +738,13 @@ export function BoardSafeMap({
       )}
 
       <div ref={containerRef} className="h-[460px] w-full" />
+
+      {drawingRoad && <p role="status" className="bg-orange-950 px-4 py-3 text-sm text-orange-100">Dibujo de restricción: pulsa sobre el mapa para añadir puntos. Borrador de {roadDraft.length} puntos; todavía no hay cierre confirmado.</p>}
+
+      {previewRoute && <p role="status" className="border-t border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-200">
+        Ruta {previewRoute.id.slice(0, 8)} · {ROUTE_LABELS[routeState(previewRoute)]}.
+        Amarillo discontinuo: candidata; verde: verificada; rojo: sin habilitación.
+      </p>}
 
       <div className="flex flex-wrap items-center gap-4 border-t border-slate-800 bg-slate-950/70 px-4 py-2.5 text-xs text-slate-300">
         <span className="inline-flex items-center gap-1.5">

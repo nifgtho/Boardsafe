@@ -3,10 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "node scripts/prepare-map-worker.mjs",
+    "predev": "node scripts/prepare-map-worker.mjs",
+    "prebuild": "node scripts/prepare-map-worker.mjs",
+    "postbuild": "node scripts/prepare-standalone.mjs",
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "build": "next build --webpack",
+    "start": "node scripts/start-standalone.mjs",
+    "lint": "eslint",
+    "test:journeys": "node tests/journeys.e2e.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.78.0",
@@ -16,12 +21,13 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
-    "@tailwindcss/turbopack": "4.3.3",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
+    "playwright": "1.65.1",
     "tailwindcss": "4.3.3",
     "typescript": "^5"
   }
