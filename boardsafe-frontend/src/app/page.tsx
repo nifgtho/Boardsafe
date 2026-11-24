@@ -262,7 +262,7 @@ export default function HomePage() {
             ))}
           </nav>
           <div className={withMap ? "grid items-start gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]" : "mx-auto max-w-4xl"}>
-            <div id="workspace-start" tabIndex={-1} className="min-w-0 scroll-mt-32 space-y-4">
+            <div id="workspace-start" tabIndex={-1} className="min-w-0 scroll-mt-32 space-y-4 xl:order-2">
               {withMap && <a href="#workspace-map" className="inline-flex items-center gap-2 text-sm font-semibold text-teal-300 xl:hidden"><MapPin size={16} />Ir al mapa</a>}
               {visited.includes("staff") && user.role === "admin" && (
                 <ViewActivity mode={section === "staff" ? "visible" : "hidden"}>
@@ -359,7 +359,7 @@ export default function HomePage() {
                 </ViewActivity>
               )}
             </div>
-            {withMap && <aside id="workspace-map" aria-label="Mapa del área de trabajo" tabIndex={-1} className="min-w-0 scroll-mt-32 xl:sticky xl:top-20">
+            {withMap && <aside id="workspace-map" aria-label="Mapa del área de trabajo" tabIndex={-1} className="min-w-0 scroll-mt-32 xl:sticky xl:top-20 xl:order-1">
               <BoardSafeMap
                 token={token}
                 onSelectPoint={handleSelectPoint}

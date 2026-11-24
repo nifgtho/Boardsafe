@@ -9,7 +9,7 @@ métricas y auditoría por rol, provisionamiento Edge y tótem público con prox
 
 Al entrar se abre **Viajes**, con el flujo correspondiente a la cuenta. El menú muestra las demás áreas habilitadas para ese rol. Por ejemplo, un pasajero puede abrir **Reportes y vías**, y un administrador encuentra las cuentas en **Personal** y los dispositivos en **Nodos y tótems**. Puedes cambiar de área y volver al formulario durante la misma sesión sin perder el borrador.
 
-En escritorio, el mapa aparece junto al formulario de las tareas geográficas. En pantallas pequeñas, **Ir al mapa** y **Volver al formulario** permiten alternar entre ambos. Desde el acceso principal, **Asistencia sin cuenta en el tótem** abre la terminal pública.
+En escritorio, el mapa aparece a la izquierda del formulario de las tareas geográficas. En pantallas pequeñas, **Ir al mapa** y **Volver al formulario** permiten alternar entre ambos. Desde el acceso principal, **Asistencia sin cuenta en el tótem** abre la terminal pública. El pasajero elige un paradero por nombre o busca un lugar o dirección y confirma una coincidencia.
 
 ## Arranque local
 

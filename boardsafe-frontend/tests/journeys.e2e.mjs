@@ -140,6 +140,11 @@ async function session(role) {
   await page.getByLabel(/^Contraseña/).fill(password);
   await page.getByRole("button", { name: "Entrar a BoardSafe" }).click();
   await visible(page.getByRole("button", { name: "Salir", exact: true }));
+  const map = await page.locator("#workspace-map").boundingBox();
+  const form = await page.locator("#workspace-start").boundingBox();
+  assert.ok(map && form);
+  if (role === "passenger") assert.ok(map.y >= form.y + form.height, "Formulario primero en móvil");
+  else assert.ok(map.x + map.width <= form.x, "Mapa a la izquierda en escritorio");
   return page;
 }
 
@@ -213,11 +218,22 @@ async function exerciseRiskAndKiosk(authority, tokens, stop, vehicle) {
   page.on("request", (request) => observedRequests.push({ url: request.url(), headers: request.headers() }));
   page.on("pageerror", (error) => pageErrors.push(error.message));
   console.log("E2E: proxy privado y viaje desde tótem");
+  await context.route("**/api/v1/stops", (route) => route.fulfill({ json: [stop] }));
+  await context.route("https://photon.komoot.io/api/**", (route) => route.fulfill({ json: {
+    features: [{ geometry: { coordinates: [-76.23, -9.92] }, properties: { name: "Plaza de prueba", city: "Huánuco" } }],
+  } }));
   await page.goto(`${kioskOrigin}/totem`);
-  await page.getByLabel("Latitud (destino del tótem)").fill("-9.92");
-  await page.getByLabel("Longitud (destino del tótem)").fill("-76.23");
+  await page.getByRole("button", { name: new RegExp(stop.code) }).click();
+  await page.getByRole("button", { name: "Cambiar destino" }).click();
+  await page.getByLabel("Nombre del paradero, lugar o dirección").fill("Plaza de prueba");
+  await page.getByRole("button", { name: "Buscar lugar o dirección" }).click();
+  await page.getByRole("button", { name: "Plaza de prueba Huánuco" }).click();
   await page.getByRole("checkbox", { name: /Consiento/ }).check();
+  const sent = page.waitForRequest((request) => request.url().endsWith("/api/kiosk/requests") && request.method() === "POST");
   await page.getByRole("button", { name: "Solicitar asistencia sin cuenta", exact: true }).click();
+  const body = (await sent).postDataJSON();
+  assert.equal(body.destination_lat, -9.92);
+  assert.equal(body.destination_lon, -76.23);
   await visible(page.getByLabel("Código privado de seguimiento (se muestra una vez)"));
   const trackingToken = await page.getByLabel("Código privado de seguimiento (se muestra una vez)").inputValue(); sensitive.push(trackingToken);
   await page.getByRole("button", { name: "Ya guardé mi código" }).click();

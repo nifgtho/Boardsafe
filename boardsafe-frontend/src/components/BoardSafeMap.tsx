@@ -1,5 +1,7 @@
 "use client";
 
+import { searchPlaces } from "@/lib/placeSearch";
+
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -540,36 +542,8 @@ export function BoardSafeMap({
     // 2. Buscar calles, plazas y comercios reales cerca del mapa (Photon OSM)
     try {
       const center = mapRef.current?.getCenter() ?? { lat: -9.9306, lng: -76.2422 };
-      const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${center.lat}&lon=${center.lng}&limit=5`;
-      const resp = await fetch(url);
-      if (resp.ok) {
-        const data = (await resp.json()) as {
-          features?: Array<{
-            geometry: { coordinates: [number, number] };
-            properties: {
-              name?: string;
-              street?: string;
-              city?: string;
-              state?: string;
-              osm_value?: string;
-            };
-          }>;
-        };
-        for (const [idx, f] of (data.features ?? []).entries()) {
-          const [lon, lat] = f.geometry.coordinates;
-          const p = f.properties;
-          const title = p.name || p.street || q;
-          const subtitle = [p.street, p.city, p.state].filter(Boolean).join(", ");
-          results.push({
-            id: `place-${idx}-${lon}-${lat}`,
-            title,
-            subtitle: subtitle || "Ubicación en mapa",
-            lat: Number(lat.toFixed(6)),
-            lon: Number(lon.toFixed(6)),
-            kind: "place",
-          });
-        }
-      }
+      const places = await searchPlaces(q, center);
+      for (const place of places) results.push({ ...place, kind: "place" });
     } catch {
       // Si falla la red externa, igual mostramos los paraderos locales
     } finally {

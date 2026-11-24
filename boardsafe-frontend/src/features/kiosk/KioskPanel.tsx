@@ -21,7 +21,8 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { ApiError } from "@/components/ApiError";
-import { CoordinateFields } from "@/components/FormControls";
+import { DestinationPicker } from "./DestinationPicker";
+import type { Destination } from "@/lib/placeSearch";
 import { buttonClass, fieldClass } from "@/components/controls";
 import { BoardSafeError } from "@/lib/api";
 import { parseApiUtcDate } from "@/lib/dates";
@@ -72,8 +73,7 @@ interface KioskPanelProps {
 }
 
 export function KioskPanel({ showBackButton = true, onBack }: KioskPanelProps) {
-  const [lat, setLat] = useState("");
-  const [lon, setLon] = useState("");
+  const [destination, setDestination] = useState<Destination | null>(null);
   const [support, setSupport] = useState<SupportOption[]>(["boarding_help"]);
   const [consent, setConsent] = useState(false);
   const [ticket, setTicket] = useState<{ token: string; expires: string } | null>(null);
@@ -88,6 +88,8 @@ export function KioskPanel({ showBackButton = true, onBack }: KioskPanelProps) {
 
   const clear = useCallback((text: string) => {
     setTicket(null);
+    setDestination(null);
+    setSupport(["boarding_help"]);
     setTracking(null);
     setShowCode(false);
     setResume("");
@@ -190,7 +192,7 @@ export function KioskPanel({ showBackButton = true, onBack }: KioskPanelProps) {
     window.speechSynthesis.cancel();
     const textToSpeak = ticket
       ? statusText
-      : "Asistencia sin cuenta. Indica tu destino y los apoyos que necesitas. Solicita ayuda al personal si lo necesitas.";
+      : "Asistencia sin cuenta. Elige un paradero o busca un lugar por nombre o dirección. Selecciona los apoyos que necesitas. Solicita ayuda al personal si lo necesitas.";
     const speech = new SpeechSynthesisUtterance(textToSpeak);
     speech.lang = "es-PE";
     speech.onend = () => setIsSpeaking(false);
@@ -437,13 +439,14 @@ export function KioskPanel({ showBackButton = true, onBack }: KioskPanelProps) {
             className="space-y-6"
             onSubmit={async (e) => {
               e.preventDefault();
+              if (!destination || busy) return;
               setBusy(true);
               setError(null);
               setMessage("");
               try {
                 const receipt = await kioskRequest<KioskReceipt>("requests", {
-                  destination_lat: Number(lat),
-                  destination_lon: Number(lon),
+                  destination_lat: destination.lat,
+                  destination_lon: destination.lon,
                   support,
                   consent_operational: consent,
                 });
@@ -456,29 +459,12 @@ export function KioskPanel({ showBackButton = true, onBack }: KioskPanelProps) {
               }
             }}
           >
-            {/* Paso 1: Coordenadas de destino */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs uppercase font-bold tracking-wider text-teal-400">Paso 1</span>
-                <span className="text-xs text-slate-400">Ubicación de destino</span>
-              </div>
-              <h2 className="text-lg font-bold text-white">¿A dónde te diriges?</h2>
-              <CoordinateFields prefix="destino del tótem" lat={lat} lon={lon} onLat={setLat} onLon={setLon} />
-              <p className="text-xs text-slate-400">
-                Ingresa las coordenadas o solicita al personal del paradero que te ayude a fijar el destino en el sistema.
-              </p>
-            </div>
+            <DestinationPicker destination={destination} onChange={setDestination} />
 
             {/* Paso 2: Apoyos operativos requeridos */}
             <fieldset className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs uppercase font-bold tracking-wider text-teal-400">Paso 2</span>
-                <span className="text-xs text-slate-400">Selecciona al menos uno</span>
-              </div>
-              <legend className="text-lg font-bold text-white">Apoyos operativos</legend>
-              <p className="text-sm text-slate-300">
-                Marca los requerimientos que necesitas para abordar y realizar tu viaje con seguridad:
-              </p>
+              <legend className="px-1 text-lg font-bold text-white">¿Qué apoyo necesitas?</legend>
+              <p className="text-sm text-slate-300">Selecciona al menos una opción.</p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 {(Object.entries(SUPPORT_LABELS) as [SupportOption, string][]).map(([value, label]) => {
@@ -520,8 +506,7 @@ export function KioskPanel({ showBackButton = true, onBack }: KioskPanelProps) {
             {/* Paso 3: Consentimiento */}
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs uppercase font-bold tracking-wider text-teal-400">Paso 3</span>
-                <span className="text-xs text-slate-400">Requerido por normativa</span>
+                <span className="text-xs uppercase font-bold tracking-wider text-teal-400">Confirmación</span>
               </div>
               <label className="flex min-h-12 items-start gap-3.5 cursor-pointer text-base text-slate-200">
                 <input
@@ -540,7 +525,7 @@ export function KioskPanel({ showBackButton = true, onBack }: KioskPanelProps) {
             {/* Botón de Envío Principal */}
             <button
               type="submit"
-              disabled={busy || !support.length || !consent}
+              disabled={busy || !destination || !support.length || !consent}
               className={`${buttonClass} min-h-14 w-full text-xl font-bold bg-teal-600 hover:bg-teal-500 shadow-lg shadow-teal-950`}
             >
               {busy ? "Enviando…" : "Solicitar asistencia sin cuenta"}
