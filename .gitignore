@@ -1,0 +1,27 @@
+# Local secrets, credentials and runtime data. Keep examples reviewable.
+**/.env
+**/.env.*
+!**/.env*.example
+**/.admin-local.txt
+**/.demo-local.txt
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+**/.ruff_cache/
+**/.coverage
+**/htmlcov/
+**/*.db
+**/*.db-journal
+**/*.db-wal
+**/*.db-shm
+**/*.sqlite
+**/*.sqlite-journal
+**/*.sqlite-wal
+**/*.sqlite-shm
+**/node_modules/
+**/.next/
+**/test-results/
+**/playwright-report/
+backups/
+**/*.dump
+**/*.egg-info/

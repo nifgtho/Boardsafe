@@ -22,7 +22,7 @@ export type AssistanceStatus =
   | "expired"
   | "unable_to_serve";
 
-export type RouteStatus = "candidate" | "verified" | "revoked" | "blocked";
+export type RouteStatus = "candidate" | "verified" | "revoked" | "blocked" | "expired";
 
 export type ReportKind =
   | "debris"
@@ -87,12 +87,12 @@ export interface VehicleRecord {
 
 export interface AssistanceRecord {
   id: string;
-  passenger_id: string | null;
+  passenger_id?: string | null;
   stop_id: string;
   destination_lat: number;
   destination_lon: number;
   support: SupportOption[];
-  consent_operational: boolean;
+  consent_operational?: boolean;
   vehicle_id: string | null;
   route_id: string | null;
   state: AssistanceStatus;
@@ -115,6 +115,8 @@ export interface RoutePlanRecord {
   verified_at: string | null;
   expires_at: string | null;
   verification_note: string | null;
+  valid_now?: boolean;
+  blockers?: string[];
 }
 
 export interface ReportRecord {
@@ -170,3 +172,31 @@ export interface DomainEventRecord {
   payload: Record<string, unknown>;
   created_at: string;
 }
+
+export interface RiskAssessmentRecord {
+  id: string; zone_id: string; score: number; category: string;
+  reasons: string[]; evaluated_at: string; rule_version: string;
+}
+export interface AuditLogRecord {
+  id: number; actor_id: string | null; action: string; resource_type: string;
+  resource_id: string; detail: Record<string, unknown>; created_at: string;
+}
+export interface EdgeNodeRecord {
+  id: string; code: string; kind: "camera" | "totem"; enabled: boolean;
+  stop_id: string | null; vehicle_id: string | null; last_seen_at: string | null;
+}
+export interface ContinuityMetrics {
+  requests: number; completed: number; pending: number;
+  ajcr_percent: number | null; methodology: string;
+}
+export interface RainReadingRecord {
+  id: string; kind: "observation" | "forecast"; source: string; source_ref: string;
+  lat: number; lon: number; mm: number; period_hours: number;
+  observed_at: string; created_at: string;
+}
+export interface ResourceRecommendations {
+  zone_id: string; status: "unverified_candidates"; warning: string;
+  options: { asset_id: string; code: string; type: AssetType; distance_straight_m: number; status: string }[];
+}
+export interface KioskReceipt { request_id: string; tracking_token: string; expires_at: string; instruction: string }
+export interface KioskTracking { request_id: string; state: AssistanceStatus; stop_id: string; support: SupportOption[]; vehicle_assigned: boolean; expires_at: string }

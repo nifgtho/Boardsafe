@@ -1,11 +1,13 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
+from alembic.script import ScriptDirectory
 from fastapi import FastAPI,Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
+from sqlalchemy import inspect,text
 from sqlalchemy.exc import IntegrityError
 from app.config import get_settings
-from app.db import SessionLocal
+from app.db import Base,SessionLocal
 from app.api import auth,operations,reports,roads,assistance,sensing,resilience,map_events,kiosk
 
 @asynccontextmanager
@@ -35,12 +37,21 @@ def live():return {"status":"alive","service":"boardsafe"}
 
 @app.get("/health/ready",tags=["Salud"])
 def ready():
+    database_connected=False
     try:
         with SessionLocal() as db:
             db.execute(text("SELECT 1"))
-        return {"status":"ready","database":"connected","routing_configured":bool(get_settings().osrm_base_url)}
+            database_connected=True
+            tables=set(inspect(db.connection()).get_table_names())
+            if not set(Base.metadata.tables).issubset(tables) or "alembic_version" not in tables:
+                return JSONResponse(status_code=503,content={"status":"unavailable","database":"connected","schema":"pending_migrations"})
+            expected=set(ScriptDirectory(str(Path(__file__).resolve().parent.parent / "migrations")).get_heads())
+            actual=set(db.execute(text("SELECT version_num FROM alembic_version")).scalars())
+            if actual!=expected:
+                return JSONResponse(status_code=503,content={"status":"unavailable","database":"connected","schema":"pending_migrations"})
+        return {"status":"ready","database":"connected","schema":"current","routing_configured":bool(get_settings().osrm_base_url)}
     except Exception:
-        return JSONResponse(status_code=503,content={"status":"unavailable","database":"unavailable"})
+        return JSONResponse(status_code=503,content={"status":"unavailable","database":"connected" if database_connected else "unavailable","schema":"unavailable"})
 
 for router in [auth.router,operations.router,reports.router,roads.router,assistance.router,sensing.router,resilience.router,map_events.router,kiosk.router]:
     app.include_router(router,prefix="/api/v1")

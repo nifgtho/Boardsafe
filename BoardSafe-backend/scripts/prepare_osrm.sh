@@ -4,6 +4,7 @@ set -euo pipefail
 # Non-commercial OSM community: follow ODbL attribution/share-alike requirements.
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="$ROOT/data/osrm"
+OSRM_IMAGE="${BOARDSAFE_OSRM_IMAGE:-ghcr.io/project-osrm/osrm-backend:latest}"
 mkdir -p "$DEST"
 cd "$DEST"
 if [ ! -s peru-latest.osm.pbf ]; then
@@ -13,11 +14,11 @@ if [ ! -s peru-latest.osm.pbf ]; then
 fi
 if [ ! -s peru-latest.osrm.mldgr ]; then
     echo "Preparando OSRM (puede necesitar varios GB de RAM y espacio en disco) ..."
-    docker run --rm -t -v "$DEST:/data" ghcr.io/project-osrm/osrm-backend:latest \
+    docker run --rm -v "$DEST:/data" "$OSRM_IMAGE" \
        osrm-extract -p /opt/car.lua /data/peru-latest.osm.pbf
-    docker run --rm -t -v "$DEST:/data" ghcr.io/project-osrm/osrm-backend:latest \
+    docker run --rm -v "$DEST:/data" "$OSRM_IMAGE" \
        osrm-partition /data/peru-latest.osrm
-    docker run --rm -t -v "$DEST:/data" ghcr.io/project-osrm/osrm-backend:latest \
+    docker run --rm -v "$DEST:/data" "$OSRM_IMAGE" \
        osrm-customize /data/peru-latest.osrm
 fi
-echo "Rutas OSRM preparadas. Inicie: docker compose --profile routing up -d"
+echo "Rutas OSRM preparadas con $OSRM_IMAGE. Inicie el perfil routing del Compose elegido con esa misma imagen."

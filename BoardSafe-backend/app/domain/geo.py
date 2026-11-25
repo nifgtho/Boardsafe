@@ -1,7 +1,6 @@
 """Geometry and route-to-restriction overlap in metres, with explicit uncertainty margin."""
 from math import radians, cos, sin, atan2, sqrt
-from shapely.geometry import LineString as SLine, Point
-from shapely.ops import transform
+from shapely.geometry import LineString as SLine
 
 EARTH_RADIUS_M = 6371008.8
 
@@ -20,9 +19,9 @@ def near_route(a_geometry: dict, b_geometry: dict, margin_m: float = 35.0) -> bo
         raise ValueError("Se requieren geometrías GeoJSON LineString válidas")
     middle_lat = sum(p[1] for p in a + b) / (len(a) + len(b))
     scale_x = max(1000, 111320 * cos(radians(middle_lat)))
-    def xy(lon, lat, z=None):
-        return lon*scale_x, lat*111320
-    return transform(xy, SLine(a)).distance(transform(xy, SLine(b))) <= margin_m
+    projected_a = SLine([(point[0]*scale_x, point[1]*111320) for point in a])
+    projected_b = SLine([(point[0]*scale_x, point[1]*111320) for point in b])
+    return projected_a.distance(projected_b) <= margin_m
 
 def within_radius(point_lon, point_lat, zone_lon, zone_lat, radius_m):
     return meters_between((point_lon,point_lat), (zone_lon,zone_lat)) <= radius_m

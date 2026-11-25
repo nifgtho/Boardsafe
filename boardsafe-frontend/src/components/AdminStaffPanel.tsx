@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { UserPlus, CheckCircle2, AlertTriangle, Copy } from "lucide-react";
 import { apiRequest, BoardSafeError } from "@/lib/api";
 import type { UserRole } from "@/types/boardsafe";
+import { usePollingResource } from "@/hooks/usePollingResource";
 
 type StaffRole = Exclude<UserRole, "passenger">;
 
@@ -11,6 +12,7 @@ interface CreatedStaff {
   id: string;
   email: string;
   role: StaffRole;
+  active?: boolean;
 }
 
 const STAFF_ROLES: { value: StaffRole; label: string; desc: string }[] = [
@@ -27,11 +29,23 @@ export function AdminStaffPanel({ token }: { token: string }) {
   const [role, setRole] = useState<StaffRole>("dispatcher");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [createdList, setCreatedList] = useState<CreatedStaff[]>([]);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const loadStaff = useCallback((signal: AbortSignal) => apiRequest<CreatedStaff[]>("/auth/staff", { token, signal }), [token]);
+  const { data: staff, error: loadError, loading: fetchingStaff, refresh } = usePollingResource(loadStaff);
+
+  async function copyStaffId(id: string) {
+    try {
+      await navigator.clipboard.writeText(id);
+      setFeedback("ID del personal copiado.");
+    } catch {
+      setError(`No se pudo copiar automáticamente. ID: ${id}`);
+    }
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setFeedback(null);
     setLoading(true);
 
     try {
@@ -42,7 +56,8 @@ export function AdminStaffPanel({ token }: { token: string }) {
         body: { email: cleanEmail, password, role },
       });
 
-      setCreatedList((prev) => [created, ...prev]);
+      setFeedback(`Cuenta de ${created.email} registrada.`);
+      refresh();
       setEmail("");
       setPassword("");
     } catch (err) {
@@ -68,7 +83,7 @@ export function AdminStaffPanel({ token }: { token: string }) {
             Crear cuentas de personal
           </h2>
           <p className="text-xs text-slate-400">
-            Endpoint real: POST /api/v1/auth/staff (solo rol admin)
+            Administración de cuentas del personal autorizado.
           </p>
         </div>
       </div>
@@ -83,7 +98,10 @@ export function AdminStaffPanel({ token }: { token: string }) {
         </div>
       )}
 
-      <form onSubmit={handleCreate} className="space-y-3">
+      {loadError instanceof Error && <p role="alert" className="mb-3 text-sm text-amber-200">{loadError.message}</p>}
+      {feedback && <p role="status" className="mb-3 text-sm text-teal-200">{feedback}</p>}
+
+      <form onSubmit={handleCreate} autoComplete="off" className="space-y-3">
         <div>
           <label htmlFor="staff-role" className="block text-xs font-medium text-slate-200">
             Rol operativo
@@ -110,6 +128,7 @@ export function AdminStaffPanel({ token }: { token: string }) {
             <input
               id="staff-email"
               type="email"
+              autoComplete="off"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -125,11 +144,12 @@ export function AdminStaffPanel({ token }: { token: string }) {
             <input
               id="staff-pass"
               type="password"
+              autoComplete="new-password"
               required
               minLength={12}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Operador2026!"
+              placeholder="Usa una contraseña nueva"
               className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-teal-400 focus:outline-none"
             />
           </div>
@@ -144,13 +164,13 @@ export function AdminStaffPanel({ token }: { token: string }) {
         </button>
       </form>
 
-      {createdList.length > 0 && (
         <div className="mt-5 border-t border-slate-800 pt-4">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Creados en esta sesión (copia el ID si es conductor)
-          </h3>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-slate-200">Personal registrado</h3>
+            <button type="button" onClick={refresh} disabled={fetchingStaff} className="rounded-lg border border-slate-600 px-3 py-2 text-sm text-white disabled:opacity-50">Actualizar personal</button>
+          </div>
           <ul className="space-y-2">
-            {createdList.map((u) => (
+            {(staff ?? []).map((u) => (
               <li
                 key={u.id}
                 className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-teal-500/20 bg-slate-950 px-3 py-2 text-xs"
@@ -161,10 +181,11 @@ export function AdminStaffPanel({ token }: { token: string }) {
                   <span className="rounded bg-teal-500/20 px-2 py-0.5 text-teal-300">
                     {u.role}
                   </span>
+                  {u.active === false && <span className="text-amber-200">Inactivo</span>}
                 </div>
                 <button
                   type="button"
-                  onClick={() => navigator.clipboard.writeText(u.id)}
+                  onClick={() => void copyStaffId(u.id)}
                   className="inline-flex items-center gap-1 rounded bg-slate-800 px-2 py-1 font-mono text-[11px] text-slate-300 hover:bg-slate-700"
                   title="Copiar UUID"
                 >
@@ -175,7 +196,6 @@ export function AdminStaffPanel({ token }: { token: string }) {
             ))}
           </ul>
         </div>
-      )}
     </section>
   );
 }

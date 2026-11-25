@@ -1,25 +1,25 @@
-"""Operational admin CLI. Creates no fabricated users, vehicles, routes or hazards."""
+"""Operational CLI. Demo records require the explicit, local-only seed-demo command."""
 import argparse
 import csv
 import getpass
 import io
 import json
-import sys
 import zipfile
 from pathlib import Path
 from sqlalchemy import select
 from app.db import SessionLocal
-from app.models import User,Stop,RiskZone
-from app.security import password_hash
+from app.models import Stop,RiskZone
 
 def bootstrap(email):
+    from app.bootstrap import admin_credentials, ensure_admin
     password=getpass.getpass("Clave de administrador (mínimo 12 caracteres): ")
-    if len(password)<12:raise SystemExit("Clave insuficiente")
-    with SessionLocal() as db:
-        if db.scalar(select(User).where(User.email==email.lower())):raise SystemExit("El usuario ya existe")
-        user=User(email=email.lower(),password_hash=password_hash(password),role="admin")
-        db.add(user);db.commit()
-        print("Administrador creado. ID:",user.id)
+    try:
+        account=admin_credentials(email,password)
+        if account is None:raise ValueError("Se requiere correo y contraseña de administrador")
+        result=ensure_admin(account)
+    except ValueError as error:
+        raise SystemExit(str(error)) from None
+    print("Administrador creado." if result=="created" else "El administrador ya existe; su contraseña se conservó.")
 
 def import_gtfs(filename, prefix):
     """Import real stops.txt. Source/license/corridor must be validated by deployer."""
@@ -65,10 +65,22 @@ def import_risk(filename,source,version):
 if __name__=="__main__":
     parser=argparse.ArgumentParser(description="BoardSafe operaciones")
     sp=parser.add_subparsers(dest="cmd",required=True)
+    sp.add_parser("migrate",help="Aplicar migraciones y crear admin configurado si no existe")
     b=sp.add_parser("bootstrap-admin");b.add_argument("--email",required=True)
     g=sp.add_parser("import-gtfs");g.add_argument("--file",required=True);g.add_argument("--prefix",required=True)
     r=sp.add_parser("import-risk-geojson");r.add_argument("--file",required=True);r.add_argument("--source",required=True);r.add_argument("--version",required=True)
+    sp.add_parser("seed-demo",help="Crear 1 conductor, 1 paradero y 1 vehículo DEMO en desarrollo local")
     args=parser.parse_args()
-    if args.cmd=="bootstrap-admin":bootstrap(args.email)
+    if args.cmd=="migrate":
+        from app.bootstrap import migrate_and_bootstrap
+        try:
+            result=migrate_and_bootstrap()
+        except ValueError as error:
+            raise SystemExit(str(error)) from None
+        print({"created":"Migraciones aplicadas; administrador creado.","existing":"Migraciones aplicadas; administrador existente conservado.","disabled":"Migraciones aplicadas; bootstrap admin no configurado."}[result])
+    elif args.cmd=="bootstrap-admin":bootstrap(args.email)
     elif args.cmd=="import-gtfs":import_gtfs(args.file,args.prefix)
     elif args.cmd=="import-risk-geojson":import_risk(args.file,args.source,args.version)
+    elif args.cmd=="seed-demo":
+        from app.demo import seed_demo
+        print(json.dumps(seed_demo(),ensure_ascii=False,indent=2))

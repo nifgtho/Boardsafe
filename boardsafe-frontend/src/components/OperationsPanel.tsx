@@ -16,6 +16,7 @@ import {
   Navigation,
 } from "lucide-react";
 import { apiRequest, BoardSafeError } from "@/lib/api";
+import { parseApiUtcDate } from "@/lib/dates";
 import type {
   BayStatus,
   StopRecord,
@@ -33,6 +34,7 @@ interface OperationsPanelProps {
   } | null;
   selectedStopId?: string | null;
   onDataChanged: () => void;
+  refreshTrigger?: number;
 }
 
 interface UiError {
@@ -83,8 +85,7 @@ const QUICK_BAY_NOTES: { status: BayStatus; label: string; note: string }[] = [
 
 function formatCheckedAt(iso: string | null): string {
   if (!iso) return "Sin verificación registrada";
-  const normalized = iso.endsWith("Z") ? iso : `${iso}Z`;
-  const date = new Date(normalized);
+  const date = parseApiUtcDate(iso);
   if (Number.isNaN(date.getTime())) return "Hora desconocida";
   return date.toLocaleTimeString("es-PE", {
     hour: "2-digit",
@@ -98,25 +99,27 @@ export function OperationsPanel({
   role,
   pickedCoords,
   selectedStopId = null,
+  refreshTrigger = 0,
   onDataChanged,
 }: OperationsPanelProps) {
-  const canCreateStop = role === "dispatcher" || role === "authority";
-  const canVerifyBay = role === "dispatcher" || role === "inspector";
-  const canCreateVehicle = role === "dispatcher";
-  const canUpdateVehicle = role === "driver" || role === "dispatcher";
+  const canCreateStop = ["dispatcher", "authority", "admin"].includes(role);
+  const canVerifyBay = ["dispatcher", "inspector", "admin"].includes(role);
+  const canCreateVehicle = role === "dispatcher" || role === "admin";
+  const canUpdateVehicle = ["driver", "dispatcher", "admin"].includes(role);
   const canSeeVehicles = [
     "dispatcher",
     "driver",
     "inspector",
     "authority",
+    "admin",
   ].includes(role);
 
   const [tab, setTab] = useState<"stops" | "vehicles">(
-    role === "driver" ? "vehicles" : "stops"
+    selectedStopId ? "stops" : role === "driver" ? "vehicles" : "stops"
   );
   const [stops, setStops] = useState<StopRecord[]>([]);
   const [vehicles, setVehicles] = useState<VehicleRecord[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<SubmitTask>(null);
   const [error, setError] = useState<UiError | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -128,13 +131,13 @@ export function OperationsPanel({
 
   // Formulario nuevo paradero (StopIn)
   const [stopCode, setStopCode] = useState("");
-  const [stopName, setStopName] = useState("");
-  const [stopLat, setStopLat] = useState("");
-  const [stopLon, setStopLon] = useState("");
+  const [stopName, setStopName] = useState(pickedCoords?.suggestedName ?? "");
+  const [stopLat, setStopLat] = useState(pickedCoords && tab === "stops" ? String(pickedCoords.lat) : "");
+  const [stopLon, setStopLon] = useState(pickedCoords && tab === "stops" ? String(pickedCoords.lon) : "");
   const [wheelchairAccessible, setWheelchairAccessible] = useState(true);
 
   // Formulario verificación de bahía (StopBay)
-  const [bayTargetId, setBayTargetId] = useState<string | null>(null);
+  const [bayTargetId, setBayTargetId] = useState<string | null>(canVerifyBay ? selectedStopId : null);
   const [bayStatus, setBayStatus] = useState<BayStatus>("clear");
   const [bayNote, setBayNote] = useState(
     "Inspección física confirmada: bahía despejada y accesible."
@@ -150,59 +153,56 @@ export function OperationsPanel({
   const [vehStatusTarget, setVehStatusTarget] = useState<VehicleRecord | null>(
     null
   );
-  const [vehSpacesFree, setVehSpacesFree] = useState(1);
-  const [vehRampOk, setVehRampOk] = useState(true);
-  const [vehLat, setVehLat] = useState("");
-  const [vehLon, setVehLon] = useState("");
+  const [vehSpacesFree, setVehSpacesFree] = useState("");
+  const [vehRampOk, setVehRampOk] = useState<"" | "true" | "false">("");
+  const [vehLat, setVehLat] = useState(pickedCoords && tab === "vehicles" ? String(pickedCoords.lat) : "");
+  const [vehLon, setVehLon] = useState(pickedCoords && tab === "vehicles" ? String(pickedCoords.lon) : "");
 
   const stopCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // Sincroniza coordenadas y nombre sugerido desde el clic o buscador del mapa
-  useEffect(() => {
-    if (!pickedCoords) return;
-
-    if (tab === "stops") {
+  // Ajusta el formulario al cambiar la selección, conservando la edición manual.
+  const [previousSelection, setPreviousSelection] = useState({ pickedCoords, tab });
+  if (pickedCoords !== previousSelection.pickedCoords || tab !== previousSelection.tab) {
+    setPreviousSelection({ pickedCoords, tab });
+    if (pickedCoords && tab === "stops") {
       setStopLat(String(pickedCoords.lat));
       setStopLon(String(pickedCoords.lon));
       if (pickedCoords.suggestedName) {
         setStopName(pickedCoords.suggestedName);
       }
-    } else if (tab === "vehicles") {
+    } else if (pickedCoords && tab === "vehicles") {
       setVehLat(String(pickedCoords.lat));
       setVehLon(String(pickedCoords.lon));
     }
-  }, [pickedCoords, tab]);
+  }
 
-  // Sincroniza cuando el usuario hace clic en un paradero directamente en el mapa
+  const [previousStopId, setPreviousStopId] = useState(selectedStopId);
+  if (selectedStopId !== previousStopId) {
+    setPreviousStopId(selectedStopId);
+    if (selectedStopId) {
+      setTab("stops");
+      setStopFilter("");
+      if (canVerifyBay) setBayTargetId(selectedStopId);
+    }
+  }
+
   useEffect(() => {
     if (!selectedStopId) return;
-    setTab("stops");
-    setStopFilter("");
-
-    if (canVerifyBay) {
-      setBayTargetId(selectedStopId);
-    }
-
     const card = stopCardRefs.current[selectedStopId];
     if (card) {
       card.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   }, [selectedStopId, canVerifyBay]);
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const stopData = await apiRequest<StopRecord[]>("/stops", { token });
+  const fetchAll = useCallback(() => {
+    return Promise.all([
+      apiRequest<StopRecord[]>("/stops", { token }),
+      canSeeVehicles ? apiRequest<VehicleRecord[]>("/vehicles", { token }) : Promise.resolve([]),
+    ]).then(([stopData, vehData]) => {
+      setError(null);
       setStops(stopData);
-
-      if (canSeeVehicles) {
-        const vehData = await apiRequest<VehicleRecord[]>("/vehicles", {
-          token,
-        });
-        setVehicles(vehData);
-      }
-    } catch (err) {
+      setVehicles(vehData);
+    }).catch((err: unknown) => {
       if (err instanceof BoardSafeError) {
         setError({
           message: err.message,
@@ -216,14 +216,18 @@ export function OperationsPanel({
           hint: "Verifica que el backend esté activo e intenta recargar.",
         });
       }
-    } finally {
+    }).finally(() => {
       setLoading(false);
-    }
+    });
   }, [token, canSeeVehicles]);
 
   useEffect(() => {
     fetchAll();
-  }, [fetchAll]);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void fetchAll();
+    }, 10000);
+    return () => window.clearInterval(timer);
+  }, [fetchAll, refreshTrigger]);
 
   function setApiError(err: unknown, fallback: string) {
     if (err instanceof BoardSafeError) {
@@ -367,7 +371,15 @@ export function OperationsPanel({
     setError(null);
     setFeedback(null);
 
-    if (vehSpacesFree > vehStatusTarget.accessible_spaces_total) {
+    if (vehSpacesFree.trim() === "" || vehRampOk === "") {
+      setError({
+        message: "Confirma las plazas disponibles y el estado de la rampa.",
+        reasons: ["Un estado desconocido necesita verificación antes de guardarse."],
+        hint: "Comprueba el vehículo y completa ambos campos.",
+      });
+      return;
+    }
+    if (Number(vehSpacesFree) > vehStatusTarget.accessible_spaces_total) {
       setError({
         message: "Las plazas libres superan la capacidad instalada.",
         reasons: [
@@ -396,7 +408,7 @@ export function OperationsPanel({
         token,
         body: {
           accessible_spaces_free: Number(vehSpacesFree),
-          ramp_ok: vehRampOk,
+          ramp_ok: vehRampOk === "true",
           at_lat: hasLat ? Number(vehLat) : null,
           at_lon: hasLon ? Number(vehLon) : null,
         },
@@ -488,7 +500,7 @@ export function OperationsPanel({
 
         <button
           type="button"
-          onClick={fetchAll}
+          onClick={() => { setLoading(true); void fetchAll(); }}
           disabled={loading}
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700 disabled:opacity-60"
         >
@@ -1019,12 +1031,12 @@ export function OperationsPanel({
                           </span>
                         </p>
                         <p className="mt-0.5 text-xs text-slate-300">
-                          Plazas libres: <strong>{v.accessible_spaces_free}</strong>/
-                          {v.accessible_spaces_total} · Rampa:{" "}
+                          Plazas libres: <strong>{v.accessible_spaces_free ?? "Sin confirmar"}</strong>
+                          {v.accessible_spaces_free === null ? ` · capacidad ${v.accessible_spaces_total}` : `/${v.accessible_spaces_total}`} · Rampa:{" "}
                           <strong
-                            className={v.ramp_ok ? "text-teal-300" : "text-rose-300"}
+                            className={v.ramp_ok === null ? "text-amber-200" : v.ramp_ok ? "text-teal-300" : "text-rose-300"}
                           >
-                            {v.ramp_ok ? "Operativa" : "No operativa"}
+                            {v.ramp_ok === null ? "Sin confirmar" : v.ramp_ok ? "Operativa" : "No operativa"}
                           </strong>
                         </p>
                         <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-slate-400">
@@ -1069,8 +1081,8 @@ export function OperationsPanel({
                             type="button"
                             onClick={() => {
                               setVehStatusTarget(v);
-                              setVehSpacesFree(v.accessible_spaces_free);
-                              setVehRampOk(v.ramp_ok);
+                              setVehSpacesFree(v.accessible_spaces_free === null ? "" : String(v.accessible_spaces_free));
+                              setVehRampOk(v.ramp_ok === null ? "" : v.ramp_ok ? "true" : "false");
                               setVehLat(
                                 v.at_lat !== null
                                   ? String(v.at_lat)
@@ -1112,21 +1124,28 @@ export function OperationsPanel({
                                   required
                                   value={vehSpacesFree}
                                   onChange={(e) =>
-                                    setVehSpacesFree(Number(e.target.value))
+                                    setVehSpacesFree(e.target.value)
                                   }
                                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-xs text-white"
                                 />
                               </div>
 
-                              <label className="flex cursor-pointer items-center gap-2 pt-4 text-xs text-slate-200">
-                                <input
-                                  type="checkbox"
-                                  checked={vehRampOk}
-                                  onChange={(e) => setVehRampOk(e.target.checked)}
-                                  className="h-4 w-4 rounded accent-teal-500"
-                                />
-                                Rampa operativa
-                              </label>
+                              <div>
+                                <label htmlFor={`veh-ramp-${v.id}`} className="mb-1 block text-xs text-slate-300">
+                                  Estado de la rampa
+                                </label>
+                                <select
+                                  id={`veh-ramp-${v.id}`}
+                                  required
+                                  value={vehRampOk}
+                                  onChange={(e) => setVehRampOk(e.target.value as "" | "true" | "false")}
+                                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-xs text-white"
+                                >
+                                  <option value="">Sin confirmar</option>
+                                  <option value="true">Operativa, verificada</option>
+                                  <option value="false">No operativa</option>
+                                </select>
+                              </div>
                             </div>
 
                             <p className="text-[11px] text-slate-400">

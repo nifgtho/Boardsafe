@@ -1,0 +1,379 @@
+AUDITORÍA TÉCNICA DE BOARDSAFE
+Fecha: 23 de noviembre de 2026, America/Lima
+Alcance: copia local del repositorio; frontend, API, reglas, migraciones,
+pruebas, configuración, despliegue previsto e integraciones.
+
+ESTADO ACTUAL: MÓDULOS INSTITUCIONALES, TÓTEM Y LIMPIEZA (24/11/2026)
+
+Integrados WebSocket institucional con reconexión/replay y cierre al logout,
+continuidad/auditoría por rol, riesgo/clima/recursos, nodos y proxy/tótem público.
+58 pruebas backend y controles de imports/tipos/lint/build aprobados. El recorrido
+ampliado sobre PostgreSQL/PostGIS terminó correctamente y un respaldo se restauró
+en otra base, comparando 14 tablas y migración. Ver docs/RESULTADOS_VALIDACION.md.
+
+Se retiraron 13 imports sin uso, 5 SVG de plantilla y 5 metadatos egg-info; se
+centralizaron errores y estilos. Ver docs/REVISION_CODIGO.md para alcance y límites.
+DEMO-TOTEM quedó conectado al paradero DEMO con clave privada fuera de Git.
+No se crearon viajes en la base local. Entrega organizada en commits en la rama
+second; push y despliegue público pendientes.
+El comando app.cli migrate ahora crea el admin configurado tras Alembic, sin
+duplicar, cambiar contraseñas ni elevar cuentas. Probado en SQLite y PostgreSQL.
+Credenciales privadas separadas; ver docs/ADMIN_AUTOMATICO.md.
+
+Las secciones siguientes son evidencia histórica. Su listado de módulos pendientes
+queda reemplazado por README.md y docs/PLAN_ENTREGA.md.
+
+ETAPA ANTERIOR: RESILIENCIA VIAL Y ENTREGA DOCKER
+
+Se integraron reportes, revisión y dibujo/confirmación de cierres por rol en la
+web, con entrada por teclado alternativa al mapa. Un reporte nunca cierra una
+vía automáticamente. Se bloquea reactivar una restricción cuya vigencia venció.
+
+48 pruebas backend aprobadas; lint y TypeScript aprobados. Chromium validó el
+frontend Docker con reporte -> revisión -> cierre dibujado -> interrupción ->
+recuperación -> finalización. La API de ese recorrido fue temporal y aislada.
+
+Se construyeron las imágenes frontend/backend. Compose integrado arrancó con
+PostgreSQL 16/PostGIS 3.4, migración 0002 y usuario API sin superusuario. Gateway,
+worker MapLibre, readiness y registro/login/logout en PostgreSQL comprobados.
+No se descargó el grafo Perú ni se configuró dominio/certificado público.
+
+Guía principal para quien desplegará: docs/ENTREGA_Y_DESPLIEGUE.md.
+Resultados y límites: docs/RESULTADOS_VALIDACION.md. Secretos privados ignorados;
+comprobador de candidatos Git sin valores locales detectados. No hubo push.
+
+Las referencias siguientes a Docker no disponible y módulos pendientes son
+históricas y quedan reemplazadas por este estado y el README principal.
+
+ETAPA ANTERIOR: DEMOSTRACIÓN Y DOCUMENTACIÓN PRINCIPAL
+
+Por solicitud explícita del usuario se cargó 1 conductor, 1 paradero y 1 vehículo
+DEMO en la base local, conservando los datos existentes. Identificaciones:
+conductor.demo@boardsafe.test, DEMO-S01 y DEMO-V01. La cuenta está vinculada a la
+unidad. Bahía, plazas y rampa permanecen sin verificar; no se crearon rutas ni
+viajes automáticamente. Credenciales en .demo-local.txt (600, ignorado por Git).
+La carga es repetible y está restringida a development + SQLite.
+
+El listado de personal ahora consulta GET /auth/staff, solo para admin y sin
+credenciales en respuesta. Readiness exige tablas y revisión Alembic actual.
+Se comprobaron 44 pruebas backend y la visualización de los registros en navegador.
+
+README.md de raíz es la documentación principal; docs/ contiene operación,
+arquitectura, seguridad y plan de entrega. CONTRIBUTING.md explica validaciones.
+CI está en .github/workflows/ci.yml y prepara comprobaciones de backend, frontend
+y recorrido de navegador aislado. No se ejecutó todavía en GitHub.
+
+Las secciones siguientes conservan evidencia histórica; para uso actual consultar
+README.md y sus guías enlazadas.
+
+ETAPA ANTERIOR: CICLO DE VIAJES INTEGRADO
+
+Ya existen paneles modulares de despacho, inspección de rutas y conductor.
+Se conectaron planificación OSRM, verificación/renovación, oferta, aceptación,
+abordaje, finalización y recuperación con la misma unidad. El mapa representa
+candidatas discontinuas, verificadas y rutas sin habilitación, y ajusta el encuadre.
+Solicitudes, mapa y operaciones se actualizan cada 10 segundos mientras están
+visibles. Las rutas del conductor se filtran también en el servidor por sus
+servicios asignados. Los campos privados omitidos por la API son opcionales en
+los tipos de respuesta; no se muestran diagnósticos ni posiciones personales.
+
+Proveedor público OSRM habilitado únicamente en development. Se comprobó una
+consulta real en Huánuco: una ruta GeoJSON, 50 puntos y 1716.1 metros. Es una
+comprobación técnica y no una ruta inspeccionada o un dato operativo importado.
+Antes de producción/piloto debe usarse un proveedor autorizado/propio.
+
+Verificación: TypeScript, lint y build aprobados; 38 pruebas backend aprobadas.
+Prueba Chromium aprobada con cuentas/base/rutas controladas y temporales:
+solicitud, planificación, verificación, oferta, aceptación, rechazo de abordaje
+sin bahía despejada, abordaje, cierre por API, interrupción, alternativa verificada,
+recuperación, finalización y logout. Se comprobó render de rutas en GeoJSON y
+consola sin errores inesperados. El proveedor raster de esa prueba es un fixture;
+esa evidencia no verifica en vivo MapTiler ni permisos de operación reales.
+
+Cuenta administradora solicitada por el usuario creada localmente; contraseña
+aleatoria en BoardSafe-backend/.admin-local.txt (600, ignorado por Git).
+No se importaron paraderos, vehículos ni zonas de riesgo ficticias en la base local.
+Queda pendiente confirmar datos reales del piloto y sus responsables, además de
+reportes/cierres desde UI, riesgo, recursos, auditoría, WebSocket institucional,
+tótem y despliegue PostgreSQL/HTTPS. El servidor sigue validando las reglas COC.
+
+ETAPA ANTERIOR: PRIMERA CORRECCIÓN
+
+TypeScript, ESLint y compilación de producción del frontend aprobados. Backend:
+37 pruebas aprobadas (27 existentes y 10 de regresión). Corregidos manejo de
+vehículos sin confirmar, sincronización de formularios, refs de React, errores
+ocultos del mapa, filtro de restricciones activas, worker ESM de MapLibre,
+normalización UTC, renovación de rutas vencidas y revalidación de WebSocket.
+Se añadió tolerancia JWT acotada a 5 segundos, configurable entre 0 y 30, sin
+desactivar firma, caducidad, revocación ni validación de identidad.
+
+Python 3.12 instalado de forma permanente para el usuario y .venv creado en el
+backend. Base SQLite local migrada hasta head. Registro, login, perfil, logout,
+revocación y CORS comprobados por HTTP con una cuenta temporal eliminada al
+terminar. Frontend, CSS y worker del mapa responden HTTP 200. No se hizo una
+prueba automatizada de navegador/WebGL ni validación en campo.
+
+El build usa Webpack y el desarrollo Turbopack, con Tailwind mediante PostCSS.
+Instrucciones de arranque actualizadas en boardsafe-frontend/README.md.
+Pendientes: OSRM, datos operativos reales, pantallas de despacho y módulos
+institucionales, cliente de eventos, tótem y despliegue PostgreSQL/HTTPS.
+Readiness sigue comprobando conectividad; su mejora de esquema permanece pendiente.
+
+Los apartados de hallazgos y resultados que siguen documentan la auditoría
+original; los puntos corregidos arriba ya no describen el estado actual.
+
+DICTAMEN INICIAL
+
+El frontend SÍ existe en boardsafe-frontend. Es una aplicación Next.js/React
+con autenticación y conexión HTTP al backend FastAPI de BoardSafe-backend.
+Está parcialmente implementado y tiene errores de tipos. El producto no está
+listo para publicar ni para ejecutar el recorrido operativo completo desde la web.
+Hace falta tanto configuración de entorno como desarrollo funcional.
+
+La existencia de código y pruebas no demuestra un despliegue operativo.
+No se inspeccionó ningún servidor remoto ni cuenta de hosting.
+
+ACTUALIZACIÓN POSTERIOR: CONFIGURACIÓN LOCAL SEPARADA
+Se trasladaron las variables originales del frontend a
+boardsafe-frontend/.env.local, conservando sus valores. Se creó un .env propio
+del backend para development con SQLite local, JWT e ingesta aleatorios e
+independientes, CORS localhost/127.0.0.1:3000 y OSRM pendiente de configurar.
+Ambos archivos se leen correctamente por sus aplicaciones, tienen permisos 600
+y están ignorados por Git. No se ejecutaron servicios ni se validó MapTiler en vivo.
+Esta configuración es local y no sirve como configuración de Compose/producción.
+
+1. INVENTARIO FUNCIONAL
+
+Implementado en la web:
+- Login, registro de pasajero y cierre de sesión; JWT mantenido en memoria.
+- Creación de personal por el administrador.
+- Mapa MapLibre, selección de puntos/paraderos, búsqueda de lugares.
+- Alta y consulta de paraderos y vehículos; verificación de bahía y estado vehicular.
+- Solicitud, consulta, cancelación y finalización de asistencia del pasajero.
+- Mensajes de errores, opciones de apoyo, lectura de estado mediante voz del navegador
+  y un control de alto contraste. No se ha validado accesibilidad con usuarios.
+
+Implementado en API, sin pantallas para operarlo en el frontend actual:
+- Planificar rutas OSRM, listar alternativas y verificarlas por inspector/autoridad.
+- Ver solicitudes desde operaciones, ofrecer/asignar un vehículo y una ruta.
+- Aceptar servicio, confirmar abordaje y completar viaje desde el conductor.
+- Recuperar un viaje interrumpido mediante una alternativa verificada.
+- Enviar/revisar reportes, confirmar cierres y reaperturas.
+- Gestionar zonas de riesgo, lluvia, evaluaciones y recursos de respuesta.
+- Registrar nodos Edge y acceso por tótem sin cuenta mediante gateway confiable.
+- Mostrar auditoría, métricas y feed de eventos institucionales.
+
+Consecuencia: un pasajero puede registrar una solicitud, pero el personal no
+puede atender todo el ciclo desde las pantallas existentes. Por ejemplo, el
+OperationsPanel solamente ofrece las pestañas de paraderos y vehículos.
+Referencia: boardsafe-frontend/src/components/OperationsPanel.tsx:114.
+Los endpoints faltantes de UI están documentados en
+BoardSafe-backend/docs/FRONTEND_INTEGRATION.md.
+
+2. HALLAZGOS PRIORITARIOS
+
+P1 = bloquea entrega funcional/publicación o necesita corrección antes de exposición.
+P2 = defecto operativo o de fiabilidad que debe corregirse antes del piloto.
+
+P1. Errores de TypeScript en edición de vehículos, reproducidos.
+OperationsPanel.tsx:1072 recibe number|null en un estado que exige number;
+OperationsPanel.tsx:1073 recibe boolean|null en un estado que exige boolean.
+Los valores nulos son válidos para un vehículo sin confirmación previa.
+Corregir representando explícitamente el estado desconocido y exigiendo una
+confirmación humana; no convertir silenciosamente desconocido en rampa operativa.
+Comprobación: npx --no-install tsc --noEmit -> dos errores TS2345.
+
+P1. Falta el flujo operativo del frontend descrito en el apartado 1.
+No se resuelve solamente con variables .env: requiere implementar pantallas
+y conectarlas a las reglas del servidor.
+
+P1. WebSocket conserva acceso después del logout, reproducido.
+BoardSafe-backend/app/api/map_events.py:78-95 comprueba token, revocación,
+usuario y rol al conectar; luego envía eventos sin repetir esa comprobación.
+Se reprodujo que /auth/me devuelve 401 tras cerrar sesión mientras la conexión
+ya abierta sigue recibiendo stop.created.
+Corregir cierre al vencer/revocar JWT o cambiar estado/rol del usuario y cubrirlo
+con una prueba de conexión persistente. El mismo problema de revalidación afecta
+a la caducidad natural y cambios de permisos, por inspección del bucle.
+
+P1. Fallos del mapa se convierten en datos vacíos, confirmado por código.
+boardsafe-frontend/src/components/BoardSafeMap.tsx:286-299 usa allSettled pero
+sustituye rechazos por []/EMPTY_FC. El catch no recibe esos rechazos.
+Una caída de API o 401 puede ocultar capas sin explicar que la carga falló.
+Mostrar el error de cada resultado rechazado y diferenciar falta de datos de fallo.
+
+P2. El mapa dibuja restricciones abiertas/caducadas igual que cerradas.
+BoardSafeMap.tsx:355-365 filtra por kind y usa siempre una línea roja.
+La API entrega también estados open, restricted y open_expired.
+Filtrar/simbolizar por estado y presentar vigencia; no todas son un cierre activo.
+
+P2. Información operativa sin actualización automática.
+No hay consumo de WebSocket ni polling periódico en el frontend. Las vistas se
+cargan al montar, al ejecutar ciertas acciones locales o al pulsar refrescar.
+Una asignación, cierre o caducidad en otra sesión no actualiza automáticamente
+el panel del pasajero ni el mapa. La frescura de bahía/vehículo puede quedar
+visualmente vigente después de los 180 segundos configurados.
+Implementar suscripción institucional y consulta autorizada del pasajero,
+con reconexión, estado de desconexión y actualización de la vigencia.
+
+P2. Rutas vencidas no pueden volver a verificarse, reproducido.
+BoardSafe-backend/app/api/roads.py:73 admite candidate/blocked/revoked/expired.
+Una ruta verified cuyo expires_at pasó permanece verified; el worker no la
+cambia a expired. Un inspector recibe 409 al intentar verificarla otra vez.
+Permitir renovar una verificación vencida o materializar la transición de caducidad,
+volviendo a comprobar restricciones. Hoy sería necesario crear otra ruta.
+
+P2. Fechas con huso horario se interpretan incorrectamente, reproducido.
+app/api/sensing.py:35 descarta tzinfo sin convertir a UTC. Una señal actual
+con offset -05:00 recibe 422 por supuesta antigüedad. También se usa este patrón
+en lluvia y vencimiento de restricciones (roads.py:23,30).
+Normalizar a UTC antes de retirar tzinfo; definir qué hacer con fechas sin zona.
+El agente Edge incluido emite UTC y evita ese caso, pero otros integradores
+pueden enviar ISO 8601 válido con hora de Lima.
+
+P2. Health/ready da un falso positivo con una base sin migraciones, reproducido.
+app/main.py:36-41 solamente hace SELECT 1. Una SQLite vacía devuelve 200 ready
+aunque no tiene tablas. routing_configured solo indica URL no vacía, no salud OSRM.
+Comprobar revisión/esquema esperado y separar disponibilidad de integraciones.
+Compose sí exige terminar migraciones antes de arrancar API, pero el endpoint
+por sí solo no acredita esa condición en otros modos de despliegue.
+
+P2. Calidad y sesiones del frontend.
+npm run lint reporta nueve errores: dos escrituras de refs durante render,
+seis reglas set-state-in-effect y uno preserve-manual-memoization.
+Referencias: BoardSafeMap.tsx:236-237; OperationsPanel.tsx:165,179,225;
+PassengerAssistancePanel.tsx:184,192,236,373.
+AuthContext conserva expiresIn como valor fijo, sin reloj de expiración ni
+limpieza central de sesión al recibir 401. Mejorar el retorno al login y aviso
+de vencimiento. Recargar la página pierde la sesión por el diseño en memoria;
+esto no exige guardar JWT en localStorage.
+
+P2. Autenticación intermitente en la suite del entorno auditado.
+Dos ejecuciones completas terminaron con 26 aprobadas y una fallida en pruebas
+distintas; la repetición diagnóstica encontró ImmatureSignatureError:
+The token is not yet valid (iat). Un JWT recién creado puede recibir 401.
+Referencia: app/security.py:27-39, emisión con now_utc y decodificación sin leeway.
+Revisar sincronización del reloj y medición de UTC; evaluar una tolerancia pequeña
+y explícita sin desactivar la validación de fechas. La auditoría identifica el
+motivo del rechazo; no demuestra todavía si el desfase lo origina el host,
+el entorno de pruebas o una dependencia. No se declara la suite estable.
+
+3. CONFIGURACIÓN QUE FALTA EN ESTA COPIA
+
+Entorno local:
+- Python del sistema: 3.10; pyproject.toml exige >=3.11 y Docker usa 3.12.
+  Para la auditoría se instaló Python 3.12 y dependencias solo en /tmp.
+- Docker está localizado como integración de Docker Desktop, pero docker version
+  informa que no está disponible en esta distribución WSL.
+- Configuración local actual: BoardSafe-backend/.env y
+  boardsafe-frontend/.env.local separados y validados, según la actualización
+  al inicio del informe. El backend usa SQLite solo para desarrollo; PostgreSQL,
+  Compose y proveedor OSRM siguen pendientes. Las variables INTERNAL_API_URL/KIOSK
+  del frontend están conservadas para el futuro proxy, todavía no implementado.
+- No hay dataset OSRM procesado ni modelo .onnx de Edge en el repositorio revisado.
+
+Backend (archivo BoardSafe-backend/.env):
+- Partir de .env.example y definir BOARDSAFE_ENVIRONMENT según entorno.
+- DB_PASSWORD y BOARDSAFE_DATABASE_URL deben coincidir.
+  @postgres sirve desde Compose; una API ejecutada en el host requiere una
+  base accesible desde el host. Compose no publica el puerto de PostgreSQL.
+- Definir BOARDSAFE_JWT_SECRET aleatorio y BOARDSAFE_INGEST_TOKEN independiente.
+- Definir BOARDSAFE_CORS_ORIGINS con el origen exacto de la web.
+- Definir BOARDSAFE_OSRM_BASE_URL. http://osrm:5000 corresponde a Compose;
+  para API en el host usar la dirección realmente accesible del proveedor.
+- Ejecutar alembic upgrade head y crear administrador con la CLI interactiva.
+- Mantener worker activo para mantenimiento; run_local.sh arranca solamente API.
+- Preparar OSRM con scripts/prepare_osrm.sh e iniciar el perfil routing, o
+  conectar un servicio autorizado. Sin OSRM, planificar rutas devuelve 503.
+- Importar paraderos reales, registrar personal y vehículos, verificar bahías
+  y confirmar estado vehicular. El proyecto no carga una red operativa inicial.
+
+Frontend (archivo boardsafe-frontend/.env.local):
+  NEXT_PUBLIC_BOARDSAFE_API_URL=http://127.0.0.1:8000/api/v1
+  NEXT_PUBLIC_MAPTILER_KEY=<clave pública restringida al dominio, si se usa MapTiler>
+
+La URL anterior sirve para navegador y backend en la misma máquina. Publicada
+en otro equipo, 127.0.0.1 apunta al dispositivo del visitante: debe sustituirse
+por la API accesible mediante HTTPS o por un proxy del mismo origen.
+Las variables NEXT_PUBLIC se integran en el bundle; definirlas antes de compilar.
+MapTiler es opcional en el código actual: sin clave usa tiles Esri. Su ausencia
+no explica por sí sola que falte el frontend. Revisar proveedor, cuotas y términos
+antes de operar. La búsqueda usa photon.komoot.io directamente.
+
+El contrato documenta NEXT_PUBLIC_BOARDSAFE_WS_URL, pero el frontend no la lee:
+ponerla en .env no activa eventos; primero hay que implementar el cliente.
+Ningún secreto de nodo o ingesta debe usar el prefijo NEXT_PUBLIC.
+
+Opcionales, según alcance del piloto:
+- Meteorología: el adapter Open-Meteo existe y está desactivado por defecto;
+  activarlo requiere decidir el proveedor y sus condiciones, no solo poner true.
+  No se encontró integración oficial SENAMHI/MTC.
+- Edge: cámara autorizada, nodo registrado, BOARDSAFE_EDGE_NODE_SECRET,
+  RTSP o USB, modelo ONNX externo y ROI calibrada. El sensor no confirma por sí
+  mismo que una bahía sea segura; existe verificación humana.
+- Tótem: dispositivo/gateway confiable que custodie la clave; falta su interfaz.
+
+4. DESPLIEGUE, SEGURIDAD Y MANTENIMIENTO
+
+- compose.yaml contiene PostgreSQL/PostGIS, migración, API, worker y OSRM
+  opcional; no incluye frontend ni reverse proxy/TLS.
+- next.config.ts establece output standalone, pero no existe Dockerfile del
+  frontend ni configuración de hosting verificada.
+- El workflow está en BoardSafe-backend/.github/workflows/ci.yml. En este
+  repositorio, cuyo .git está en Boardsafe, no está en .github/workflows de la
+  raíz y sus comandos tampoco indican el subdirectorio de trabajo. Debe
+  trasladarse/adaptarse para este repositorio; añadir checks del frontend.
+- No hay pruebas frontend/E2E ni automatización de PostgreSQL/PostGIS real.
+- Backend usa rangos de dependencias sin lock; Docker usa OSRM latest.
+  Registrar versiones reproducibles antes de entregar un despliegue.
+- Producción exige activar environment=production: los validadores de secretos,
+  PostgreSQL y OSRM solo actúan en ese modo. El ejemplo está en development.
+- Login/registro no tienen rate limiting en la aplicación. El README lo delega
+  al proxy, pero no incluye ese proxy configurado. Solo reportes tiene límite
+  persistente por identidad.
+- No se halló implementación de MFA, recuperación de contraseña ni gestión
+  completa de usuarios/nodos desde UI. Determinar el alcance necesario del piloto.
+- No hay backup/restauración automatizados, alertas ni validación de recuperación
+  aportados por el repositorio. Un volumen persistente no es una copia de seguridad.
+- Índices PostGIS existen en migración; varias consultas siguen filtrando en
+  Python y aplicando límites fijos. Validar escala y paginación con datos reales.
+
+5. VALIDACIÓN EJECUTADA
+
+- npm ci: dependencias frontend instaladas correctamente.
+- tsc --noEmit: falla con dos TS2345 ya descritos.
+- npm run lint: falla con nueve errores ya descritos.
+- npm run build: bloqueado por Turbopack al intentar crear un proceso/abrir puerto
+  local (Operation not permitted), también en el reintento con permiso ampliado.
+  No se atribuye ese fallo ambiental a MapLibre ni se declara build aprobado.
+- Sintaxis Python: 31 archivos de aplicación/migraciones/Edge analizados sin errores.
+- Alembic: base SQLite temporal vacía migrada hasta 0002_postgis_indexes (head).
+  La rama PostGIS específica no se ejecuta en SQLite.
+- Suite backend con Python 3.12.16: dos ejecuciones de 27 pruebas dieron 26
+  aprobadas y una fallida, en casos distintos; cobertura de líneas medida: 81%.
+  Una tercera ejecución diagnóstica registró el rechazo de iat futuro descrito
+  arriba, con un fallo y un error de preparación de fixture. El estado anterior
+  documentado de 27 aprobadas no se pudo reproducir de forma estable aquí.
+  Dependencias relevantes resueltas: FastAPI 0.165.0, Starlette 1.10.0,
+  PyJWT 2.15.1, SQLAlchemy 2.1.9 y httpx 0.28.1.
+- Cuatro reproducciones adicionales temporales: cuatro aprobadas; confirman los
+  comportamientos defectuosos de WebSocket, fecha con offset, renovación de ruta
+  y readiness. Aprobarlas significa que reproducen el defecto, no que esté corregido.
+
+No ejecutado: navegador/E2E, Compose/PostGIS, OSRM y meteorología en vivo,
+inferencia con cámara, carga, pentest ni escaneo de vulnerabilidades de dependencias.
+No se puede certificar funcionamiento integral o ausencia de vulnerabilidades.
+
+6. ORDEN PARA COMPLETAR EL PROYECTO
+
+1) Corregir tipos y lint del frontend y obtener build de producción reproducible.
+2) Configurar Python/Docker, base, secretos, CORS, migraciones y administrador.
+3) Preparar OSRM y cargar una red mínima de datos reales para el piloto.
+4) Completar ruta/asignación/aceptación/abordaje/recuperación en el frontend.
+5) Resolver el rechazo intermitente de JWT y corregir sesión WebSocket, fechas,
+   renovación de rutas, errores y estados del mapa.
+6) Añadir actualización automática y pantallas de reportes/cierres/riesgo según alcance.
+7) Probar el recorrido completo por roles y en PostgreSQL/PostGIS real; instalar
+   frontend/API detrás de HTTPS y comprobar backup, acceso y monitorización.
+
+La auditoría no modifica lógica de negocio ni crea credenciales o datos operativos.

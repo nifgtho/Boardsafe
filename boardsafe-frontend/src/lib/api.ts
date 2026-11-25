@@ -47,9 +47,10 @@ export async function apiRequest<T = unknown>(
     token?: string | null;
     method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
     body?: unknown;
+    signal?: AbortSignal;
   } = {}
 ): Promise<T> {
-  const { token, method = "GET", body } = options;
+  const { token, method = "GET", body, signal } = options;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
@@ -64,13 +65,15 @@ export async function apiRequest<T = unknown>(
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       cache: "no-store",
+      signal,
     });
-  } catch {
+  } catch (error) {
+    if (signal?.aborted) throw error;
     throw new BoardSafeError(
       0,
       "No se pudo conectar con el servidor BoardSafe.",
       [],
-      "Asegúrate de que el backend esté corriendo en http://127.0.0.1:8000."
+      "Comprueba tu conexión o contacta al responsable del servicio."
     );
   }
 

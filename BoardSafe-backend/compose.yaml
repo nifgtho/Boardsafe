@@ -10,7 +10,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U boardsafe -d boardsafe"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U boardsafe -d boardsafe"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -19,13 +19,16 @@ services:
   migrate:
     build: .
     env_file: .env
-    command: ["alembic", "upgrade", "head"]
+    command: ["python", "-m", "app.cli", "migrate"]
     depends_on:
       postgres: {condition: service_healthy}
     networks: [internal]
     restart: "no"
 
   api:
+    environment:
+      BOARDSAFE_BOOTSTRAP_ADMIN_EMAIL: ""
+      BOARDSAFE_BOOTSTRAP_ADMIN_PASSWORD: ""
     build: .
     env_file: .env
     restart: unless-stopped
@@ -41,6 +44,9 @@ services:
     networks: [internal]
 
   worker:
+    environment:
+      BOARDSAFE_BOOTSTRAP_ADMIN_EMAIL: ""
+      BOARDSAFE_BOOTSTRAP_ADMIN_PASSWORD: ""
     build: .
     env_file: .env
     command: ["python", "-m", "app.workers", "--interval", "60"]

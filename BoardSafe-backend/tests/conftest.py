@@ -6,6 +6,8 @@ from pathlib import Path
 DB_FILE=Path(tempfile.gettempdir()) / f"boardsafe_tests_{os.getpid()}.sqlite"
 os.environ["BOARDSAFE_DATABASE_URL"]=f"sqlite:///{DB_FILE}"
 os.environ["BOARDSAFE_ENVIRONMENT"]="test"
+os.environ["BOARDSAFE_BOOTSTRAP_ADMIN_EMAIL"]=""
+os.environ["BOARDSAFE_BOOTSTRAP_ADMIN_PASSWORD"]=""
 os.environ["BOARDSAFE_JWT_SECRET"]="this-is-a-tests-only-secret-and-never-production"
 os.environ["BOARDSAFE_INGEST_TOKEN"]="test-ingest-token-for-real-observations-123"
 

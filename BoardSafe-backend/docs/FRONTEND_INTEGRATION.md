@@ -17,6 +17,7 @@ NEXT_PUBLIC_BOARDSAFE_WS_URL=ws://127.0.0.1:8000/api/v1/ws/events
 
 | Vista | Operaciones | Flujo importante |
 |---|---|---|
+| Administrador | `GET /auth/staff`, `POST /auth/staff` | Listado persistente de personal; sin contraseñas ni hashes; solo admin |
 | Pasajero | `GET /stops`, `POST /assistance`, `GET /assistance/{id}`, `POST /assistance/{id}/cancel`, `POST /assistance/{id}/complete` | Solicita rampa/audio/texto sin diagnóstico |
 | Tótem sin cuenta | `POST /kiosk/{node_id}/requests`, `POST /kiosk/tracking`, `POST /kiosk/complete` | Dispositivo autenticado; devuelve código temporal una vez |
 | Transportista | `GET /vehicles`, `PATCH /vehicles/{id}/status`, `GET /assistance`, `POST /assistance/{id}/accept`, `POST /assistance/{id}/board`, `POST /reports` | Confirma plaza accesible y rampa antes del abordaje |
@@ -159,7 +160,7 @@ Para recuperar eventos perdidos tras reconexión: `GET /events?since_id=ULTIMO_I
 - `404`: recurso inexistente.
 - `409`: conflicto de dominio (ruta sin verificar, cámara fuera de servicio, bahía bloqueada, capacidad desconocida, cierre confirmado, etc.). `detail` puede ser `{message, reasons}`.
 - `422`: error de validación de entrada.
-- `429`: límite de reportes.
+- `429`: límites de reportes y del proxy de acceso.
 - `503`: proveedor de rutas/meteo no disponible, nunca mostrar una alternativa inventada.
 
 El frontend siempre debe traducir códigos a mensajes naturales, accesibles, no alarmistas y con alternativa de actuación humana. Objetivo WCAG 2.2 AA y accesibilidad multimodal (lector de pantalla, alto contraste, navegación teclado, audio/texto).
@@ -172,3 +173,11 @@ El frontend siempre debe traducir códigos a mensajes naturales, accesibles, no 
 - No prometer llegada o desvío seguro mientras no exista verificación de operador/autoridad.
 - No guardar JWT o `node_secret` en código fuente, repositorio o almacenamiento inseguro.
 - No conectar cámaras sin autorización y aprobación de políticas de privacidad.
+
+## Nodos y módulos institucionales
+
+`GET /api/v1/edge/nodes` requiere admin y devuelve columnas operativas sin
+`secret_hash`. `POST /edge/nodes` devuelve `node_secret` solo en el alta.
+La web incluye eventos con replay, métricas, auditoría (autoridad/admin), riesgo,
+recursos y `/totem`. El proxy Next `/api/kiosk/*` no reenvía `X-Node-Key` al
+navegador y recibe sus credenciales por variables privadas de runtime.

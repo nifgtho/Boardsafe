@@ -1,5 +1,4 @@
 """Pure domain policy. No ML guesses, no medical inference, fail closed on stale data."""
-from datetime import timedelta
 from app.db import now_utc
 from app.domain.geo import near_route, meters_between
 

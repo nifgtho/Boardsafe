@@ -1,13 +1,12 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter,Depends,HTTPException,WebSocket,WebSocketDisconnect,Query
-from fastapi.encoders import jsonable_encoder
-from sqlalchemy import select,func,text
+from sqlalchemy import select,func
 from sqlalchemy.orm import Session
 from app.db import get_db,SessionLocal,now_utc
 from app.config import get_settings
-from app.models import Stop,Vehicle,User,Report,Assistance,RoadRestriction,RiskZone,RiskAssessment,ResponseAsset,DomainEvent,AuditLog,RevokedToken
-from app.security import get_current_user,require_roles,decode_token
+from app.models import Stop,Vehicle,User,Report,Assistance,RoadRestriction,RiskZone,RiskAssessment,ResponseAsset,DomainEvent,AuditLog
+from app.security import get_current_user,require_roles,decode_token,get_token_user
 from app.services import resource
 from app.domain.rules import is_fresh
 
@@ -44,7 +43,7 @@ def feature_collection(bbox:str|None=None,db:Session=Depends(get_db),user:User=D
                 features.append({"type":"Feature","id":asset.id,"geometry":{"type":"Point","coordinates":[asset.lon,asset.lat]},"properties":{"kind":"response_asset","type":asset.asset_type,"code":asset.code,"status":asset.state}})
     for road in db.scalars(select(RoadRestriction).limit(2000)).all():
         if not bounds or any(coordinates_visible(p[1],p[0],bounds) for p in road.geometry.get("coordinates",[])):
-            features.append({"type":"Feature","id":road.id,"geometry":road.geometry,"properties":{"kind":"road_restriction","name":road.name,"status":"open_expired" if road.expires_at and road.expires_at < now_utc() and road.status=="closed" else road.status,"confirmed_at":road.confirmed_at.isoformat()+"Z"}})
+            features.append({"type":"Feature","id":road.id,"geometry":road.geometry,"properties":{"kind":"road_restriction","name":road.name,"status":"open_expired" if road.expires_at and road.expires_at <= now_utc() and road.status!="open" else road.status,"confirmed_at":road.confirmed_at.isoformat()+"Z"}})
     if user.role in {"dispatcher","driver","inspector","authority","admin"}:
         vehicles=db.scalars(select(Vehicle).limit(2000)).all()
         for v in vehicles:
@@ -78,19 +77,25 @@ async def event_socket(ws:WebSocket):
         token=await asyncio.wait_for(ws.receive_text(), timeout=10)
         claims=decode_token(token)
         with SessionLocal() as db:
-            u=db.get(User,claims["sub"])
-            if not u or not u.active or db.get(RevokedToken,claims.get("jti")) or u.role!=claims.get("role") or u.role not in {"dispatcher","inspector","authority","admin"}:
+            u=get_token_user(token,db)
+            if u.role not in {"dispatcher","inspector","authority","admin"}:
                 await ws.close(code=1008);return
+            last=db.scalar(select(func.max(DomainEvent.id))) or 0
         await ws.send_json({"type":"connected","poll_seconds":get_settings().event_poll_seconds})
         # On reconnect clients should use GET /events?since_id=... to recover missed messages.
-        last=0
-        with SessionLocal() as db:
-            last=db.scalar(select(func.max(DomainEvent.id))) or 0
         while True:
             await asyncio.sleep(get_settings().event_poll_seconds)
             with SessionLocal() as db:
+                u=get_token_user(token,db)
+                if claims["exp"]<=datetime.now(timezone.utc).timestamp() or u.role not in {"dispatcher","inspector","authority","admin"}:
+                    await ws.close(code=1008);return
                 rows=db.scalars(select(DomainEvent).where(DomainEvent.id>last).order_by(DomainEvent.id).limit(200)).all()
                 for e in rows:
+                    # A token may be revoked while a batch is being sent.
+                    db.expire_all()
+                    u=get_token_user(token,db)
+                    if claims["exp"]<=datetime.now(timezone.utc).timestamp() or u.role not in {"dispatcher","inspector","authority","admin"}:
+                        await ws.close(code=1008);return
                     await ws.send_json({"type":"event","event":resource(e)})
                     last=e.id
     except (WebSocketDisconnect, asyncio.TimeoutError, RuntimeError):

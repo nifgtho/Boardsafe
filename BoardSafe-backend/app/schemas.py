@@ -23,6 +23,12 @@ class Account(Strict):
 class CreateStaff(Account):
     role: Literal["driver", "dispatcher", "inspector", "authority", "admin"]
 
+class StaffOut(Strict):
+    id: str
+    email: str
+    role: Literal["driver", "dispatcher", "inspector", "authority", "admin"]
+    active: bool
+
 class Login(Strict):
     email: str
     password: str
@@ -126,6 +132,17 @@ class EdgeNodeIn(Strict):
         if bool(self.stop_id) == bool(self.vehicle_id):
             raise ValueError("El nodo pertenece a un paradero o vehículo, no ambos")
         return self
+
+class EdgeNodeOut(Strict):
+    id: str
+    code: str
+    kind: Literal["camera", "totem"]
+    stop_id: str | None
+    vehicle_id: str | None
+    enabled: bool
+    last_seen_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
 
 class EdgeSignal(Strict):
     event_type: Literal["bay_obstruction", "bay_no_obstruction", "space_occupied", "space_no_obstruction", "node_fault"]
